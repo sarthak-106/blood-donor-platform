@@ -1,37 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prismaClient';
 import { cookies } from 'next/headers';
-import { randomUUID } from 'crypto';
+import { createSession, getSession, deleteSession, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/session';
 
-// Session store (use Redis/DB in production)
-const sessionStore = new Map<string, { userId: string; expiresAt: number }>();
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const SESSION_COOKIE = 'bdp_session';
-
-export function createSession(userId: string): string {
-  const sessionId = randomUUID();
-  sessionStore.set(sessionId, { userId, expiresAt: Date.now() + SESSION_TTL_MS });
-  return sessionId;
+function sanitizeUser(user: any) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    profile_image: user.profile_image,
+    verification_status: user.verification_status,
+  };
 }
 
-export function getSession(sessionId: string): { userId: string } | null {
-  const session = sessionStore.get(sessionId);
-  if (!session) return null;
-  if (Date.now() > session.expiresAt) {
-    sessionStore.delete(sessionId);
-    return null;
-  }
-  return { userId: session.userId };
-}
-
-// POST /api/auth/session → register or login, returns session cookie
+// POST /api/auth/session -> login or logout
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { action, phone, email, password, name, role } = body;
+    const { action, phone, email } = body;
 
     if (action === 'login') {
-      // Find user by phone or email
       let user = null;
       if (phone) {
         user = await prisma.user.findFirst({ where: { phone: phone.replace(/\s+/g, '').trim() } });
@@ -58,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (action === 'logout') {
       const cookieStore = await cookies();
       const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
-      if (sessionId) sessionStore.delete(sessionId);
+      if (sessionId) deleteSession(sessionId);
       const response = NextResponse.json({ success: true });
       response.cookies.delete(SESSION_COOKIE);
       return response;
@@ -71,7 +61,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/auth/session → return current authenticated user
+// GET /api/auth/session -> return current authenticated user
 export async function GET(req: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -96,16 +86,4 @@ export async function GET(req: NextRequest) {
     console.error('[get-session]', err);
     return NextResponse.json({ success: false, user: null });
   }
-}
-
-function sanitizeUser(user: any) {
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    role: user.role,
-    profile_image: user.profile_image,
-    verification_status: user.verification_status,
-  };
 }

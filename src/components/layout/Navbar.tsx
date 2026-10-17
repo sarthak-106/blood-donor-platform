@@ -195,6 +195,15 @@ export const Navbar: React.FC = () => {
                 <span>Emergency SOS</span>
               </Link>
 
+              {/* Dedicated Sign In / Get Started Button */}
+              <Link
+                href="/auth"
+                className="inline-flex items-center space-x-1.5 bg-white dark:bg-slate-800 text-medical-red hover:bg-red-50 dark:hover:bg-red-950/40 border border-medical-red/30 text-xs font-bold px-3 py-2 rounded-xl transition shadow-sm"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </Link>
+
               {/* Persona Switcher Pill */}
               <button
                 onClick={() => setIsDemoModalOpen(true)}
@@ -228,6 +237,24 @@ export const Navbar: React.FC = () => {
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
+
+              {/* Logout button if authenticated */}
+              {currentUser && (
+                <button
+                  onClick={() => {
+                    logout();
+                    fetch('/api/auth/session', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'logout' }),
+                    });
+                  }}
+                  className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Notifications Dropdown Toggle */}
               <div className="relative">
@@ -375,7 +402,15 @@ export const Navbar: React.FC = () => {
               <span>Blood Banks Directory</span>
             </Link>
 
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+              <Link
+                href="/auth"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center space-x-2 bg-white dark:bg-slate-800 border border-medical-red/30 text-medical-red py-2.5 rounded-xl font-bold text-sm shadow-sm"
+              >
+                <User className="w-4 h-4" />
+                <span>Sign In / Create Account</span>
+              </Link>
               <Link
                 href="/recipient/emergency-sos"
                 onClick={() => setIsMobileMenuOpen(false)}

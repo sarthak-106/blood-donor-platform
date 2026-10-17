@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prismaClient';
-import { createSession } from '../session/route';
-
-const SESSION_COOKIE = 'bdp_session';
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import { createSession, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/session';
+import { hashPassword } from '@/lib/authCrypto';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
+import { randomUUID } from 'crypto';
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +16,7 @@ export async function POST(req: NextRequest) {
     const name = (formData.get('name') as string)?.trim();
     const phone = (formData.get('phone') as string)?.replace(/\s+/g, '').trim();
     const email = (formData.get('email') as string)?.toLowerCase().trim() || null;
+    const password = (formData.get('password') as string) || null;
 
     // Validate required fields
     if (!role || !name || !phone) {
@@ -21,12 +25,12 @@ export async function POST(req: NextRequest) {
 
     if (!/^\+\d{10,15}$/.test(phone)) {
       return NextResponse.json(
-        { success: false, error: 'Phone must include country code (e.g. +919876543210).' },
+        { success: false, error: 'Phone must include country code (e.g. +91 98765 43210).' },
         { status: 400 }
       );
     }
 
-    // Check for existing user
+    // Check for existing user by phone
     const existingByPhone = await prisma.user.findFirst({ where: { phone } });
     if (existingByPhone) {
       return NextResponse.json(
@@ -35,6 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check for existing user by email
     if (email) {
       const existingByEmail = await prisma.user.findFirst({ where: { email } });
       if (existingByEmail) {
@@ -45,24 +50,65 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Hash password if supplied
+    const passwordHash = password ? hashPassword(password) : null;
     const now = new Date().toISOString();
+    const refNumber = `BDP-${Date.now().toString(36).toUpperCase()}`;
 
-    // Use a transaction to create user + donor profile atomically
+    // Process file upload if provided (recipient blood request form)
+    let savedDocMeta: { fileName: string; fileSize: number; mimeType: string; securePath: string } | null = null;
+    const requestDocFile = formData.get('request_document') as File | null;
+
+    if (requestDocFile && requestDocFile.size > 0) {
+      if (requestDocFile.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { success: false, error: 'Uploaded document exceeds maximum allowed size of 5 MB.' },
+          { status: 400 }
+        );
+      }
+      if (!ALLOWED_MIME_TYPES.includes(requestDocFile.type)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid document type. Only PDF, JPG, JPEG, and PNG files are accepted.' },
+          { status: 400 }
+        );
+      }
+
+      // Save to private storage (outside public directory for security)
+      const storageDir = path.join(process.cwd(), 'storage', 'documents');
+      await mkdir(storageDir, { recursive: true });
+
+      const fileExt = path.extname(requestDocFile.name) || '.bin';
+      const secureFileName = `${randomUUID()}${fileExt}`;
+      const filePath = path.join(storageDir, secureFileName);
+
+      const arrayBuffer = await requestDocFile.arrayBuffer();
+      await writeFile(filePath, Buffer.from(arrayBuffer));
+
+      savedDocMeta = {
+        fileName: requestDocFile.name,
+        fileSize: requestDocFile.size,
+        mimeType: requestDocFile.type,
+        securePath: secureFileName,
+      };
+    }
+
+    // Use a transaction to create user and related profiles atomically
     const result = await prisma.$transaction(async (tx) => {
-      // Create user
+      // 1. Create User
       const user = await tx.user.create({
         data: {
           name,
-          email: email || `noemail_${Date.now()}@placeholder.bdp`,
+          email: email || `user_${Date.now()}@blooddonor.internal`,
           phone,
+          password_hash: passwordHash,
           role,
-          verification_status: 'Unverified',
+          verification_status: 'Verified', // phone verified via OTP
           created_at: now,
           updated_at: now,
         },
       });
 
-      // If donor, create donor profile
+      // 2. If Donor, create Donor profile
       if (role === 'donor') {
         const bloodGroup = (formData.get('blood_group') as string) || 'O+';
         const rareBloodType = (formData.get('rare_blood_type') as string)?.trim() || null;
@@ -88,7 +134,7 @@ export async function POST(req: NextRequest) {
             area,
             pin_code: pinCode,
             availability,
-            verification_status: 'Unverified',
+            verification_status: 'Unverified', // Medical review pending
             rating: 5.0,
             review_count: 0,
             emergency_ready: true,
@@ -100,17 +146,93 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // 3. If Recipient, create Recipient profile & initial BloodRequest
+      if (role === 'recipient') {
+        const relationship = (formData.get('relationship') as string) || 'Self';
+        const bloodGroup = (formData.get('blood_group') as string) || 'Unknown';
+        const quantityUnits = parseInt((formData.get('quantity_units') as string) || '1', 10);
+        const hospital = (formData.get('hospital') as string)?.trim() || '';
+        const city = (formData.get('city') as string)?.trim() || '';
+        const state = (formData.get('state') as string)?.trim() || '';
+        const urgency = (formData.get('urgency') as string) || 'Normal';
+        const notes = (formData.get('notes') as string)?.trim() || null;
+
+        // Recipient Profile
+        await tx.recipientProfile.create({
+          data: {
+            user_id: user.id,
+            patient_name: name,
+            relationship,
+            created_at: now,
+            updated_at: now,
+          },
+        });
+
+        // Blood Request
+        const bloodRequest = await tx.bloodRequest.create({
+          data: {
+            id: refNumber,
+            requester_id: user.id,
+            requester_name: name,
+            requester_phone: phone,
+            patient_name: name,
+            blood_group: bloodGroup,
+            hospital: hospital || `${city} General Hospital`,
+            city: city || state,
+            quantity_units: quantityUnits,
+            urgency,
+            status: 'Open',
+            is_emergency_sos: urgency === 'Critical',
+            contact_number: phone,
+            notes,
+            prescription_file_name: savedDocMeta?.fileName || null,
+            prescription_file_url: savedDocMeta?.securePath ? `/api/documents/${savedDocMeta.securePath}` : null,
+            created_at: now,
+            updated_at: now,
+          },
+        });
+
+        // Protected document record
+        if (savedDocMeta) {
+          await tx.bloodRequestDocument.create({
+            data: {
+              request_id: bloodRequest.id,
+              file_name: savedDocMeta.fileName,
+              file_size: savedDocMeta.fileSize,
+              mime_type: savedDocMeta.mimeType,
+              secure_path: savedDocMeta.securePath,
+              uploaded_at: now,
+            },
+          });
+        }
+      }
+
+      // 4. Record successful verification log
+      await tx.verificationRecord.create({
+        data: {
+          identifier: phone,
+          otp_code: 'VERIFIED',
+          type: 'phone_verification',
+          attempts: 1,
+          expires_at: now,
+          verified: true,
+          created_at: now,
+        },
+      });
+
       return user;
     });
 
-    // Create session
+    // Create session cookie
     const sessionId = createSession(result.id);
     const response = NextResponse.json({
       success: true,
       userId: result.id,
       role: result.role,
+      refNumber,
       message: 'Account created successfully!',
     });
+
     response.cookies.set(SESSION_COOKIE, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -124,7 +246,7 @@ export async function POST(req: NextRequest) {
     console.error('[register]', err);
     if (err?.code === 'P2002') {
       return NextResponse.json(
-        { success: false, error: 'An account with this email or phone already exists.' },
+        { success: false, error: 'An account with this email or phone number already exists.' },
         { status: 409 }
       );
     }

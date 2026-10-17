@@ -12,6 +12,7 @@ model User {
   name                String
   email               String   @unique
   phone               String
+  password_hash       String?
   role                String   // 'recipient' | 'donor' | 'hospital' | 'admin'
   profile_image       String?
   verification_status String   @default("Unverified") // 'Unverified' | 'Pending' | 'Verified' | 'Rejected'
@@ -19,11 +20,44 @@ model User {
   updated_at          String
 
   donors              Donor[]
+  recipientProfiles   RecipientProfile[]
   bloodRequests       BloodRequest[]
   notifications       Notification[]
   favorites           Favorite[]
   verificationDocs    VerificationDocument[]
   donationHistories   DonationHistory[]
+}
+
+model RecipientProfile {
+  id              String   @id @default(uuid())
+  user_id         String
+  patient_name    String
+  relationship    String?  // 'Self' | 'Family Member' | 'Friend' | 'Other'
+  created_at      String
+  updated_at      String
+
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model BloodRequestDocument {
+  id              String   @id @default(uuid())
+  request_id      String
+  file_name       String
+  file_size       Int
+  mime_type       String
+  secure_path     String
+  uploaded_at     String
+}
+
+model VerificationRecord {
+  id              String   @id @default(uuid())
+  identifier      String   // phone or email
+  otp_code        String
+  type            String   // 'phone_verification' | 'password_reset'
+  attempts        Int      @default(0)
+  expires_at      String
+  verified        Boolean  @default(false)
+  created_at      String
 }
 
 model Donor {

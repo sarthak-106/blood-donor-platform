@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Droplet, Heart, User, ArrowRight, ArrowLeft, ChevronDown,
   Phone, Mail, MapPin, Calendar, Loader2, CheckCircle2,
   AlertCircle, Eye, EyeOff, Upload, X, FileText, ShieldCheck,
-  Hospital, Stethoscope, Sparkles, RefreshCw, KeyRound, Lock
+  Hospital, Stethoscope, Sparkles, RefreshCw, KeyRound, Lock,
+  Camera, HelpCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '@/context/AuthContext';
@@ -38,7 +39,7 @@ const URGENCY_LEVELS = ['Normal', 'Urgent', 'Critical'] as const;
 const RELATIONSHIP_OPTIONS = ['Self', 'Family Member', 'Friend', 'Other'];
 
 type Step = 'role' | 'form' | 'otp' | 'success';
-type Mode = 'register' | 'login';
+type Mode = 'register' | 'login' | 'forgot_password';
 type Role = 'donor' | 'recipient';
 
 // ─── Utility Functions ────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ function formatFileSize(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Form Input Helper Components ─────────────────────────────────────────────
 
 function InputField({
   label, required, error, hint, children,
@@ -106,7 +107,14 @@ const inputCls = (hasError?: boolean) =>
 // ─── OTP Input Component ──────────────────────────────────────────────────────
 
 function OtpInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const refs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+  const refs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
 
   const handleChange = (val: string, idx: number) => {
     if (!/^\d*$/.test(val)) return;
@@ -279,6 +287,7 @@ function DonorForm({
   const [showHospitalList, setShowHospitalList] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState('');
   const [consent, setConsent] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const filteredHospitals = INDIAN_HOSPITALS.filter((h) =>
@@ -306,6 +315,8 @@ function DonorForm({
     fd.set('blood_group', bloodGroup);
     fd.set('availability', availability);
     fd.set('preferred_hospital', selectedHospital || hospitalSearch);
+    if (profilePhoto) fd.set('profile_photo', profilePhoto);
+
     const errs = validate(fd);
     setErrors(errs);
     if (Object.keys(errs).length === 0) onNext(fd);
@@ -364,7 +375,7 @@ function DonorForm({
               className={cn(inputCls(!!errors.city), 'pl-9')} />
           </div>
         </InputField>
-        <InputField label="PIN Code" error={errors.pin_code} hint="6-digit PIN">
+        <InputField label="Area / PIN Code" error={errors.pin_code} hint="6-digit PIN">
           <input name="pin_code" type="text" inputMode="numeric" maxLength={6}
             placeholder="110001" className={inputCls(!!errors.pin_code)} />
         </InputField>
@@ -406,11 +417,11 @@ function DonorForm({
               : 'border-dashed border-slate-300 text-slate-500 hover:border-purple-400 hover:text-purple-600'
           )}
         >
-          🧬 Rare / Other Blood Type
+          🧬 Other / Rare Blood Type
         </button>
         {isRareBlood && (
           <InputField label="Specify Rare Blood Type" required={isRareBlood} error={errors.rare_blood_type}
-            hint="e.g. Bombay Blood Group (hh), Rh-null, Lutheran b-negative. May require verification.">
+            hint="e.g. Bombay Blood Group (hh), Rh-null, Lutheran b-negative. May require clinical verification.">
             <input name="rare_blood_type" type="text" placeholder="Describe your rare blood type"
               className={inputCls(!!errors.rare_blood_type)} />
           </InputField>
@@ -434,7 +445,7 @@ function DonorForm({
             <option>Prefer not to say</option>
           </select>
         </InputField>
-        <InputField label="Availability">
+        <InputField label="Donation Availability">
           <select
             className={cn(inputCls(), 'cursor-pointer')}
             value={availability}
@@ -447,8 +458,8 @@ function DonorForm({
       </div>
 
       {/* Preferred Hospital */}
-      <InputField label="Preferred Hospital / Blood Donation Centre"
-        hint="Search by name or type manually if not listed">
+      <InputField label="Preferred Hospital or Blood Donation Center"
+        hint="Search by name or enter hospital manually if not listed">
         <div className="relative">
           <Hospital className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
           <input
@@ -460,7 +471,7 @@ function DonorForm({
               setShowHospitalList(true);
             }}
             onFocus={() => setShowHospitalList(true)}
-            placeholder="Search hospital or type custom name"
+            placeholder="Search hospital or type manually"
             className={cn(inputCls(), 'pl-9')}
           />
           {showHospitalList && hospitalSearch && filteredHospitals.length > 0 && !selectedHospital && (
@@ -490,11 +501,9 @@ function DonorForm({
             className="mt-0.5 w-4 h-4 rounded text-[#E53935] border-slate-300 focus:ring-[#E53935]"
           />
           <span className="text-xs text-slate-600 dark:text-slate-300">
-            I confirm the information provided is accurate. I agree to the{' '}
+            I confirm that the information provided is accurate and that I agree to the{' '}
             <a href="/privacy" target="_blank" className="text-[#E53935] underline font-semibold">Privacy Policy</a>{' '}
-            and{' '}
-            <a href="/terms" target="_blank" className="text-[#E53935] underline font-semibold">Terms of Service</a>.
-            My contact information may be shared with verified hospitals for urgent blood requests.
+            and terms. My contact information will only be shared with verified hospitals for urgent donation needs.
           </span>
         </label>
         {errors.consent && (
@@ -546,16 +555,16 @@ function RecipientForm({
   const validate = (fd: FormData) => {
     const errs: Record<string, string> = {};
     if (!fd.get('name')) errs.name = 'Full name of the recipient is required.';
-    if (!validatePhone(fd.get('phone') as string)) errs.phone = 'Enter a valid phone with country code.';
+    if (!validatePhone(fd.get('phone') as string)) errs.phone = 'Enter a valid phone with country code (e.g. +91 98765 43210).';
     if (!validateEmail(fd.get('email') as string)) errs.email = 'Enter a valid email address.';
-    if (!bloodGroup) errs.blood_group = 'Blood group is required.';
+    if (!bloodGroup) errs.blood_group = 'Required blood group is required.';
     const qty = Number(fd.get('quantity_units'));
     if (!qty || qty < 1 || qty > 50) errs.quantity_units = 'Enter a valid quantity (1–50 units).';
     if (!fd.get('hospital')) errs.hospital = 'Hospital name is required.';
     if (!fd.get('state')) errs.state = 'State is required.';
     if (!fd.get('city')) errs.city = 'City is required.';
     if (!validatePinCode(fd.get('pin_code') as string)) errs.pin_code = 'PIN code must be 6 digits.';
-    if (!fd.get('required_date')) errs.required_date = 'Required date is required.';
+    if (!fd.get('required_date')) errs.required_date = 'Required date and time is required.';
     return errs;
   };
 
@@ -577,7 +586,7 @@ function RecipientForm({
       <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900">
         <Stethoscope className="w-4 h-4 text-blue-600 flex-shrink-0" />
         <p className="text-[11px] text-blue-700 dark:text-blue-300 font-medium">
-          We'll help connect you with verified donors near the hospital.
+          We'll connect your request directly to nearby voluntary blood donors and blood banks.
         </p>
       </div>
 
@@ -589,12 +598,12 @@ function RecipientForm({
       )}
 
       {/* Requester Info */}
-      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Requester Information</p>
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">1. Requester Information</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <InputField label="Full Name of Recipient" required error={errors.name}>
+        <InputField label="Full Name of the Recipient" required error={errors.name}>
           <input name="name" type="text" placeholder="e.g. Aarav Mehta" className={inputCls(!!errors.name)} />
         </InputField>
-        <InputField label="Phone Number" required error={errors.phone} hint="Your contact number">
+        <InputField label="Phone Number of the Requester" required error={errors.phone} hint="With country code (+91)">
           <div className="relative">
             <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input name="phone" type="tel" placeholder="+91 98765 43210"
@@ -604,7 +613,7 @@ function RecipientForm({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <InputField label="Email Address (optional)" error={errors.email}>
+        <InputField label="Optional Email Address" error={errors.email}>
           <div className="relative">
             <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input name="email" type="email" placeholder="contact@example.in"
@@ -613,7 +622,7 @@ function RecipientForm({
         </InputField>
         <InputField label="Relationship to Patient (optional)">
           <select name="relationship" className={cn(inputCls(), 'cursor-pointer')} defaultValue="">
-            <option value="">Not specified</option>
+            <option value="">Select relationship</option>
             {RELATIONSHIP_OPTIONS.map((r) => <option key={r}>{r}</option>)}
           </select>
         </InputField>
@@ -621,7 +630,7 @@ function RecipientForm({
 
       {/* Blood Request Details */}
       <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-2 border-t border-slate-100 dark:border-slate-800">
-        Blood Request Details
+        2. Blood Request Details
       </p>
 
       {/* Blood Group */}
@@ -630,7 +639,7 @@ function RecipientForm({
           Required Blood Group <span className="text-red-500">*</span>
         </label>
         <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-          {[...BLOOD_GROUPS, 'Unknown'].map((bg) => (
+          {[...BLOOD_GROUPS, 'Unknown / Not Sure'].map((bg) => (
             <button
               key={bg}
               type="button"
@@ -642,7 +651,7 @@ function RecipientForm({
                   : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-[#E53935]/50'
               )}
             >
-              {bg === 'Unknown' ? '❓ Not Sure' : bg}
+              {bg === 'Unknown / Not Sure' ? '❓ Not Sure' : bg}
             </button>
           ))}
         </div>
@@ -654,11 +663,11 @@ function RecipientForm({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <InputField label="Quantity (units)" required error={errors.quantity_units} hint="1 unit ≈ 450 mL">
+        <InputField label="Quantity (blood units required)" required error={errors.quantity_units} hint="1 unit ≈ 450 mL">
           <input name="quantity_units" type="number" min="1" max="50" defaultValue={1}
             className={inputCls(!!errors.quantity_units)} />
         </InputField>
-        <InputField label="Required Date & Time" required error={errors.required_date}>
+        <InputField label="Required Date and Time" required error={errors.required_date}>
           <input name="required_date" type="datetime-local"
             min={new Date().toISOString().slice(0, 16)}
             className={inputCls(!!errors.required_date)} />
@@ -668,24 +677,24 @@ function RecipientForm({
       <InputField label="Hospital Name" required error={errors.hospital}>
         <div className="relative">
           <Hospital className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input name="hospital" type="text" placeholder="e.g. AIIMS New Delhi"
+          <input name="hospital" type="text" placeholder="e.g. AIIMS New Delhi Trauma Centre"
             className={cn(inputCls(!!errors.hospital), 'pl-9')} />
         </div>
       </InputField>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <InputField label="State" required error={errors.state}>
+        <InputField label="Hospital State" required error={errors.state}>
           <select name="state" className={cn(inputCls(!!errors.state), 'cursor-pointer')} defaultValue="">
             <option value="" disabled>Select State</option>
             {INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}
           </select>
         </InputField>
-        <InputField label="City" required error={errors.city}>
-          <input name="city" type="text" placeholder="e.g. Mumbai" className={inputCls(!!errors.city)} />
+        <InputField label="Hospital City" required error={errors.city}>
+          <input name="city" type="text" placeholder="e.g. New Delhi" className={inputCls(!!errors.city)} />
         </InputField>
-        <InputField label="PIN Code" error={errors.pin_code}>
+        <InputField label="Area / PIN Code" error={errors.pin_code}>
           <input name="pin_code" type="text" inputMode="numeric" maxLength={6}
-            placeholder="400001" className={inputCls(!!errors.pin_code)} />
+            placeholder="110029" className={inputCls(!!errors.pin_code)} />
         </InputField>
       </div>
 
@@ -712,11 +721,11 @@ function RecipientForm({
       </div>
 
       {/* Additional Notes */}
-      <InputField label="Additional Notes (optional)" hint="Any specific requirements or medical conditions">
+      <InputField label="Additional Notes (optional)" hint="Any specific patient conditions or doctor instructions">
         <textarea
           name="notes"
           rows={3}
-          placeholder="e.g. Patient has sickle cell anaemia. Surgery scheduled on 15 Oct at 9:00 AM."
+          placeholder="e.g. Scheduled surgery at 9:00 AM. Cross-matching requested."
           className={cn(inputCls(), 'resize-none')}
         />
       </InputField>
@@ -725,8 +734,8 @@ function RecipientForm({
       <FileUpload
         file={reqFile}
         onFileChange={setReqFile}
-        label="Upload Blood Request Form (optional)"
-        hint="Doctor prescription, hospital request letter, or medical authorization. Document is stored securely and only visible to authorized staff."
+        label="Upload Blood Request Form (Optional)"
+        hint="Upload doctor requisition slip or hospital certificate. Files are kept strictly confidential and accessible only to authorized medical reviewers."
       />
 
       <button
@@ -739,17 +748,17 @@ function RecipientForm({
             : 'bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 hover:scale-[1.01]'
         )}
       >
-        {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting Request…</> : <>Submit Blood Request <ArrowRight className="w-4 h-4" /></>}
+        {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting Blood Request…</> : <>Submit Blood Request <ArrowRight className="w-4 h-4" /></>}
       </button>
 
       <p className="text-[11px] text-slate-400 text-center px-4">
-        Submitting a request does not guarantee availability of blood. Our team will connect you with verified donors as quickly as possible.
+        Submitting a blood request does not guarantee donor or blood unit availability. We will mobilize matching donors in your area immediately.
       </p>
     </form>
   );
 }
 
-// ─── Sign In Form ─────────────────────────────────────────────────────────────
+// ─── Sign In Form (Supports Phone OTP & Email/Password) ───────────────────────
 
 function SignInForm({
   onSuccess, onSwitch,
@@ -757,13 +766,25 @@ function SignInForm({
   onSuccess: (role: string) => void;
   onSwitch: () => void;
 }) {
+  const [authMethod, setAuthMethod] = useState<'otp' | 'password'>('otp');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [error, setError] = useState('');
   const [devOtp, setDevOtp] = useState('');
+
+  // Forgot password sub-state
+  const [isForgotPass, setIsForgotPass] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotOtpSent, setForgotOtpSent] = useState(false);
+  const [forgotOtpDigits, setForgotOtpDigits] = useState(['', '', '', '', '', '']);
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
 
   useEffect(() => {
     if (timer > 0) {
@@ -791,7 +812,7 @@ function SignInForm({
       setTimer(60);
       if (data.devOtp) setDevOtp(data.devOtp);
     } catch {
-      setError('Network error. Please check your connection.');
+      setError('Network connection error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -800,11 +821,10 @@ function SignInForm({
   const verifyAndLogin = async () => {
     setError('');
     const otp = otpDigits.join('');
-    if (otp.length < 6) { setError('Enter the complete 6-digit OTP.'); return; }
+    if (otp.length < 6) { setError('Please enter the full 6-digit OTP.'); return; }
 
     setLoading(true);
     try {
-      // Verify OTP
       const verifyRes = await fetch('/api/auth/otp', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -813,7 +833,6 @@ function SignInForm({
       const verifyData = await verifyRes.json();
       if (!verifyData.success) { setError(verifyData.error); return; }
 
-      // Login
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -824,14 +843,196 @@ function SignInForm({
 
       onSuccess(loginData.role);
     } catch {
-      setError('Network error. Please check your connection.');
+      setError('Network connection error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!email) { setError('Email address is required.'); return; }
+    if (!password) { setError('Password is required.'); return; }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!data.success) { setError(data.error); return; }
+      onSuccess(data.role);
+    } catch {
+      setError('Network connection error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!forgotOtpSent) {
+      if (!forgotIdentifier) { setError('Phone number or email is required.'); return; }
+      setLoading(true);
+      try {
+        const res = await fetch('/api/auth/otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: forgotIdentifier }),
+        });
+        const data = await res.json();
+        if (!data.success) { setError(data.error); return; }
+        setForgotOtpSent(true);
+        if (data.devOtp) setDevOtp(data.devOtp);
+      } catch {
+        setError('Failed to send verification code.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      const otp = forgotOtpDigits.join('');
+      if (otp.length < 6) { setError('Enter the 6-digit OTP.'); return; }
+      if (!newPassword || newPassword.length < 6) { setError('Password must be at least 6 characters.'); return; }
+
+      setLoading(true);
+      try {
+        const verifyRes = await fetch('/api/auth/otp', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: forgotIdentifier, otp }),
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyData.success) { setError(verifyData.error); return; }
+
+        const resetRes = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: forgotIdentifier, newPassword, otpVerified: true }),
+        });
+        const resetData = await resetRes.json();
+        if (!resetData.success) { setError(resetData.error); return; }
+
+        setForgotSuccess('Password updated successfully! You can now sign in.');
+        setTimeout(() => {
+          setIsForgotPass(false);
+          setForgotOtpSent(false);
+          setForgotSuccess('');
+        }, 2000);
+      } catch {
+        setError('Failed to reset password.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // ── Forgot Password View ──
+  if (isForgotPass) {
+    return (
+      <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setIsForgotPass(false)} className="p-1.5 rounded-lg border hover:bg-slate-50">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Reset Password</h3>
+            <p className="text-xs text-slate-500">Verify your phone to set a new password</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />{error}
+          </div>
+        )}
+        {forgotSuccess && (
+          <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />{forgotSuccess}
+          </div>
+        )}
+
+        {!forgotOtpSent ? (
+          <>
+            <InputField label="Phone Number" required hint="Include country code (e.g. +91 98765 43210)">
+              <input
+                type="tel"
+                value={forgotIdentifier}
+                onChange={(e) => setForgotIdentifier(e.target.value)}
+                placeholder="+91 98765 43210"
+                className={inputCls()}
+              />
+            </InputField>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-[#E53935] hover:bg-red-700 text-white font-bold text-xs shadow-md transition"
+            >
+              {loading ? 'Sending Code…' : 'Send Verification OTP'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="text-center space-y-1">
+              <p className="text-xs text-slate-600">Enter OTP sent to {forgotIdentifier}</p>
+              {devOtp && (
+                <span className="text-[11px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-mono">
+                  Dev OTP: {devOtp}
+                </span>
+              )}
+            </div>
+            <OtpInput value={forgotOtpDigits} onChange={setForgotOtpDigits} />
+            <InputField label="New Password" required hint="At least 6 characters">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                className={inputCls()}
+              />
+            </InputField>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-[#E53935] hover:bg-red-700 text-white font-bold text-xs shadow-md transition"
+            >
+              {loading ? 'Resetting Password…' : 'Reset Password & Save'}
+            </button>
+          </>
+        )}
+      </form>
+    );
+  }
+
   return (
     <div className="space-y-5">
+      {/* Auth method tab switch: Phone OTP vs Email/Password */}
+      <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl p-1 bg-slate-50 dark:bg-slate-800">
+        <button
+          type="button"
+          onClick={() => { setAuthMethod('otp'); setError(''); }}
+          className={cn(
+            'flex-1 py-1.5 rounded-lg text-xs font-bold transition',
+            authMethod === 'otp' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
+          )}
+        >
+          📱 Phone OTP
+        </button>
+        <button
+          type="button"
+          onClick={() => { setAuthMethod('password'); setError(''); }}
+          className={cn(
+            'flex-1 py-1.5 rounded-lg text-xs font-bold transition',
+            authMethod === 'password' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
+          )}
+        >
+          🔒 Email & Password
+        </button>
+      </div>
+
       {error && (
         <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -839,90 +1040,154 @@ function SignInForm({
         </div>
       )}
 
-      {!otpSent ? (
-        <>
-          <InputField label="Phone Number" required hint="Enter the number linked to your account">
+      {/* ── METHOD 1: Phone OTP ── */}
+      {authMethod === 'otp' && (
+        !otpSent ? (
+          <>
+            <InputField label="Phone Number" required hint="Enter registered mobile number">
+              <div className="relative">
+                <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className={cn(inputCls(), 'pl-9 text-base')}
+                  onKeyDown={(e) => e.key === 'Enter' && sendOtp()}
+                />
+              </div>
+            </InputField>
+            <button
+              type="button"
+              onClick={sendOtp}
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
+            >
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending OTP…</> : <>Send OTP via SMS <ArrowRight className="w-4 h-4" /></>}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-[#E53935] flex items-center justify-center mx-auto">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Enter OTP sent to</p>
+              <p className="text-sm font-black text-[#E53935]">{phone}</p>
+              {devOtp && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs text-amber-700 font-mono">
+                  <Sparkles className="w-3 h-3" /> Dev OTP: <strong>{devOtp}</strong>
+                </div>
+              )}
+            </div>
+
+            <OtpInput value={otpDigits} onChange={setOtpDigits} />
+
+            <button
+              type="button"
+              onClick={verifyAndLogin}
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
+            >
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying…</> : <>Sign In <ShieldCheck className="w-4 h-4" /></>}
+            </button>
+
+            <div className="flex items-center justify-between text-xs">
+              <button type="button" onClick={() => { setOtpSent(false); setOtpDigits(['', '', '', '', '', '']); setDevOtp(''); }}
+                className="text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                <ArrowLeft className="w-3 h-3" /> Change number
+              </button>
+              {timer > 0 ? (
+                <span className="text-slate-400">Resend in {timer}s</span>
+              ) : (
+                <button type="button" onClick={sendOtp} className="text-[#E53935] font-semibold flex items-center gap-1 hover:underline">
+                  <RefreshCw className="w-3 h-3" /> Resend OTP
+                </button>
+              )}
+            </div>
+          </>
+        )
+      )}
+
+      {/* ── METHOD 2: Email & Password ── */}
+      {authMethod === 'password' && (
+        <form onSubmit={handlePasswordLogin} className="space-y-4">
+          <InputField label="Email Address" required>
             <div className="relative">
-              <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                className={cn(inputCls(), 'pl-9 text-base')}
-                onKeyDown={(e) => e.key === 'Enter' && sendOtp()}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className={cn(inputCls(), 'pl-9')}
               />
             </div>
           </InputField>
-          <button
-            type="button"
-            onClick={sendOtp}
-            disabled={loading}
-            className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
-          >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending OTP…</> : <>Send OTP via SMS <ArrowRight className="w-4 h-4" /></>}
-          </button>
-          <p className="text-center text-xs text-slate-500">
-            New here?{' '}
-            <button type="button" onClick={onSwitch} className="text-[#E53935] font-bold hover:underline">
-              Create an account
-            </button>
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="text-center space-y-1">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-[#E53935] flex items-center justify-center mx-auto">
-              <KeyRound className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Enter OTP sent to</p>
-            <p className="text-sm font-black text-[#E53935]">{phone}</p>
-            {devOtp && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs text-amber-700 font-mono">
-                <Sparkles className="w-3 h-3" /> Dev OTP: <strong>{devOtp}</strong>
-              </div>
-            )}
-          </div>
 
-          <OtpInput value={otpDigits} onChange={setOtpDigits} />
-
-          <button
-            type="button"
-            onClick={verifyAndLogin}
-            disabled={loading}
-            className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
-          >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying…</> : <>Sign In <ShieldCheck className="w-4 h-4" /></>}
-          </button>
-
-          <div className="flex items-center justify-between text-xs">
-            <button type="button" onClick={() => { setOtpSent(false); setOtpDigits(['', '', '', '', '', '']); setDevOtp(''); }}
-              className="text-slate-500 hover:text-slate-700 flex items-center gap-1">
-              <ArrowLeft className="w-3 h-3" /> Change number
-            </button>
-            {timer > 0 ? (
-              <span className="text-slate-400">Resend in {timer}s</span>
-            ) : (
-              <button type="button" onClick={sendOtp} className="text-[#E53935] font-semibold flex items-center gap-1 hover:underline">
-                <RefreshCw className="w-3 h-3" /> Resend OTP
+          <InputField label="Password" required>
+            <div className="relative">
+              <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={cn(inputCls(), 'pl-9 pr-9')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-            )}
+            </div>
+          </InputField>
+
+          <div className="flex justify-end text-xs">
+            <button
+              type="button"
+              onClick={() => setIsForgotPass(true)}
+              className="text-[#E53935] hover:underline font-semibold"
+            >
+              Forgot password?
+            </button>
           </div>
-        </>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400"
+          >
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing In…</> : <>Sign In with Password <ArrowRight className="w-4 h-4" /></>}
+          </button>
+        </form>
       )}
+
+      <p className="text-center text-xs text-slate-500 pt-2">
+        Don't have an account?{' '}
+        <button type="button" onClick={onSwitch} className="text-[#E53935] font-bold hover:underline">
+          Create an account
+        </button>
+      </p>
     </div>
   );
 }
 
-// ─── Main Auth Page ───────────────────────────────────────────────────────────
+// ─── Main Auth Page Content ───────────────────────────────────────────────────
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter();
-  const { login, register: localRegister } = useAuth();
+  const searchParams = useSearchParams();
+  const initialMode = (searchParams.get('mode') as Mode) || 'register';
+  const initialRole = (searchParams.get('role') as Role) || null;
 
-  const [mode, setMode] = useState<Mode>('register');
-  const [step, setStep] = useState<Step>('role');
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const { register: localRegister } = useAuth();
+
+  const [mode, setMode] = useState<Mode>(initialMode);
+  const [step, setStep] = useState<Step>(initialRole ? 'form' : 'role');
+  const [selectedRole, setSelectedRole] = useState<Role | null>(initialRole);
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
   const [successData, setSuccessData] = useState<{
@@ -931,7 +1196,7 @@ export default function AuthPage() {
     name?: string;
   } | null>(null);
 
-  // OTP step state for registration
+  // Registration OTP state
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
   const [regOtpSent, setRegOtpSent] = useState(false);
   const [regOtpDigits, setRegOtpDigits] = useState(['', '', '', '', '', '']);
@@ -976,7 +1241,7 @@ export default function AuthPage() {
 
   const handleRegisterConfirm = async () => {
     const otp = regOtpDigits.join('');
-    if (otp.length < 6) { setRegOtpError('Please enter the complete 6-digit OTP.'); return; }
+    if (otp.length < 6) { setRegOtpError('Please enter the full 6-digit verification code.'); return; }
     if (!pendingFormData) return;
 
     setLoading(true);
@@ -994,7 +1259,7 @@ export default function AuthPage() {
       const verifyData = await verifyRes.json();
       if (!verifyData.success) { setRegOtpError(verifyData.error); return; }
 
-      // Register
+      // Register with backend database
       const regRes = await fetch('/api/auth/register', {
         method: 'POST',
         body: pendingFormData,
@@ -1005,7 +1270,7 @@ export default function AuthPage() {
         return;
       }
 
-      // Also update local auth context for immediate UX
+      // Update local auth context
       const name = pendingFormData.get('name') as string;
       const email = pendingFormData.get('email') as string;
       const role = pendingFormData.get('role') as string;
@@ -1020,7 +1285,7 @@ export default function AuthPage() {
       );
 
       setSuccessData({
-        refNumber: `BDP-${Date.now().toString(36).toUpperCase()}`,
+        refNumber: regData.refNumber || `BDP-${Date.now().toString(36).toUpperCase()}`,
         role,
         name,
       });
@@ -1039,7 +1304,7 @@ export default function AuthPage() {
       if (role === 'admin') router.push('/admin/dashboard');
       else if (role === 'donor') router.push('/donor/dashboard');
       else router.push('/recipient/dashboard');
-    }, 500);
+    }, 400);
   };
 
   const handleSuccessRedirect = () => {
@@ -1066,7 +1331,7 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* Tab switcher (register / sign in) */}
+        {/* Tab switcher: Register / Sign In */}
         {step === 'role' || step === 'form' ? (
           <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl mb-6">
             {(['register', 'login'] as Mode[]).map((m) => (
@@ -1098,12 +1363,12 @@ export default function AuthPage() {
           {mode === 'register' && step === 'role' && (
             <div className="space-y-5">
               <div className="text-center space-y-1">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">Join as…</h2>
-                <p className="text-xs text-slate-500">Who are you registering as?</p>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white">Join the Network</h2>
+                <p className="text-xs text-slate-500">Select how you want to use the platform</p>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* Donor Card */}
+                {/* Donor Option */}
                 <button
                   type="button"
                   onClick={() => { setSelectedRole('donor'); setStep('form'); }}
@@ -1120,9 +1385,9 @@ export default function AuthPage() {
                     </div>
                     <div>
                       <h3 className="font-black text-slate-900 dark:text-white text-base">Become a Donor</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">I want to help save lives by donating blood.</p>
+                      <p className="text-xs text-slate-500 mt-0.5">“I want to help save lives by donating blood.”</p>
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {['Free Registration', 'NABL Verified', 'Emergency Ready'].map((t) => (
+                        {['Free Registration', 'Verified Profile', 'Emergency Alerts'].map((t) => (
                           <span key={t} className="text-[10px] px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 rounded-full font-semibold">{t}</span>
                         ))}
                       </div>
@@ -1131,7 +1396,7 @@ export default function AuthPage() {
                   </div>
                 </button>
 
-                {/* Recipient Card */}
+                {/* Recipient Option */}
                 <button
                   type="button"
                   onClick={() => { setSelectedRole('recipient'); setStep('form'); }}
@@ -1148,9 +1413,9 @@ export default function AuthPage() {
                     </div>
                     <div>
                       <h3 className="font-black text-slate-900 dark:text-white text-base">I'm a Recipient</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">I need blood for myself or someone else.</p>
+                      <p className="text-xs text-slate-500 mt-0.5">“I need blood for myself or someone else.”</p>
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {['Urgent Matching', 'Hospital Verified', 'Secure'].map((t) => (
+                        {['Fast Donor Matching', 'Hospital Direct', 'Sensitive Document Safe'].map((t) => (
                           <span key={t} className="text-[10px] px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded-full font-semibold">{t}</span>
                         ))}
                       </div>
@@ -1181,7 +1446,7 @@ export default function AuthPage() {
                   <h2 className="font-black text-slate-900 dark:text-white text-base">
                     {selectedRole === 'donor' ? '🩸 Donor Registration' : '🏥 Blood Request'}
                   </h2>
-                  <p className="text-xs text-slate-500">Fill in your details below</p>
+                  <p className="text-xs text-slate-500">Enter details to complete registration</p>
                 </div>
               </div>
 
@@ -1230,7 +1495,7 @@ export default function AuthPage() {
                 className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
               >
                 {loading
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Account…</>
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying & Registering…</>
                   : <><CheckCircle2 className="w-4 h-4" /> Confirm & Activate Account</>
                 }
               </button>
@@ -1272,30 +1537,29 @@ export default function AuthPage() {
                   <CheckCircle2 className="w-9 h-9" />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                  {successData.role === 'donor' ? '🎉 Welcome, Donor!' : '✅ Request Submitted!'}
+                  {successData.role === 'donor' ? '🎉 Welcome to the Donor Network!' : '✅ Blood Request Submitted!'}
                 </h2>
                 <p className="text-sm text-slate-500">
                   {successData.role === 'donor'
-                    ? `Your donor profile has been created. Your profile will be verified by our team within 24–48 hours.`
-                    : `Your blood request has been received. Our team will begin connecting you with verified donors immediately.`}
+                    ? `Thank you, ${successData.name || 'Donor'}! Your account is active. Our clinical coordinators verify voluntary donor details within 24–48 hours.`
+                    : `Your request has been registered. Reference number generated below for tracking.`}
                 </p>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 space-y-2 text-left">
-                <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wide">Reference Number</p>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 space-y-1.5 text-left border border-slate-200 dark:border-slate-700">
+                <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wide">Request Reference Number</p>
                 <p className="font-mono font-black text-lg text-[#E53935]">{successData.refNumber}</p>
-                <p className="text-[11px] text-slate-400">Save this for tracking purposes.</p>
+                <p className="text-[11px] text-slate-400">Save this reference ID to track donor responses and hospital dispatch.</p>
               </div>
 
               {successData.role === 'donor' ? (
                 <div className="grid grid-cols-1 gap-2 text-xs text-left">
                   {[
-                    { icon: '📱', text: 'Phone number verified — your account is active.' },
-                    { icon: '🔍', text: 'Profile review in progress (24–48 hrs) by the admin team.' },
-                    { icon: '🏆', text: 'Complete your profile to unlock the Verified Donor badge.' },
-                    { icon: '🆘', text: 'You may receive emergency blood requests from nearby hospitals.' },
+                    { icon: '📱', text: 'Phone verified — your donor account is officially registered.' },
+                    { icon: '🏥', text: 'You will receive priority emergency SOS alerts for matching patients nearby.' },
+                    { icon: '🎖️', text: 'Complete your donor history to unlock verified badges.' },
                   ].map(({ icon, text }) => (
-                    <div key={text} className="flex items-start gap-2 p-2">
+                    <div key={text} className="flex items-start gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
                       <span className="text-base leading-none flex-shrink-0">{icon}</span>
                       <span className="text-slate-600 dark:text-slate-400">{text}</span>
                     </div>
@@ -1303,7 +1567,7 @@ export default function AuthPage() {
                 </div>
               ) : (
                 <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 text-left">
-                  ⚠️ Availability of blood is not guaranteed. Our platform connects you to verified donors but cannot promise specific units or timing.
+                  ⚠️ Note: Blood unit availability cannot be 100% guaranteed. Our emergency coordination system contacts nearby registered donors and blood centers immediately.
                 </div>
               )}
 
@@ -1320,9 +1584,21 @@ export default function AuthPage() {
 
         {/* Footer note */}
         <p className="text-center text-[11px] text-slate-400 mt-6">
-          🔒 Your data is protected under India's DPDP Act 2023. Medical information is never shared publicly.
+          🔒 Encrypted & compliant with National Blood Transfusion Council (NBTC) & DPDP Act 2023.
         </p>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center p-12 text-slate-400">
+        <Loader2 className="w-6 h-6 animate-spin text-[#E53935]" />
+      </div>
+    }>
+      <AuthPageContent />
+    </Suspense>
   );
 }
