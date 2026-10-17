@@ -45,7 +45,7 @@ interface DBState {
   auditLogs: AuditLog[];
 }
 
-const STORAGE_KEY = 'blood_donor_platform_db_v1';
+const STORAGE_KEY = 'blood_donor_platform_db_v2';
 
 class DatabaseEngine {
   private state: DBState;
@@ -66,21 +66,18 @@ class DatabaseEngine {
       }
     }
     return {
-      users: [...SEED_USERS],
+      users: [],
       donors: [...SEED_DONORS],
-      bloodRequests: [...SEED_BLOOD_REQUESTS],
+      bloodRequests: [],
       donorRequests: [],
       bloodBanks: [...SEED_BLOOD_BANKS],
-      notifications: [...SEED_NOTIFICATIONS],
-      favorites: [
-        { id: 'fav-1', user_id: 'user-recipient-1', donor_id: 'donor-1', created_at: '2026-08-20T10:00:00Z' },
-        { id: 'fav-2', user_id: 'user-recipient-1', donor_id: 'donor-2', created_at: '2026-08-22T14:00:00Z' },
-      ],
-      verificationDocuments: [...SEED_VERIFICATION_DOCUMENTS],
+      notifications: [],
+      favorites: [],
+      verificationDocuments: [],
       achievements: [...SEED_ACHIEVEMENTS],
-      donorAchievements: [...SEED_DONOR_ACHIEVEMENTS],
-      donationHistory: [...SEED_DONATION_HISTORY],
-      auditLogs: [...SEED_AUDIT_LOGS],
+      donorAchievements: [],
+      donationHistory: [],
+      auditLogs: [],
     };
   }
 

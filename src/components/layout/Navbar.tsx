@@ -7,7 +7,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
-import { DemoSwitcherModal } from './DemoSwitcherModal';
 import {
   Heart,
   Droplet,
@@ -38,7 +37,6 @@ export const Navbar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
-  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -195,65 +193,70 @@ export const Navbar: React.FC = () => {
                 <span>Emergency SOS</span>
               </Link>
 
-              {/* Dedicated Sign In / Get Started Button */}
-              <Link
-                href="/auth"
-                className="inline-flex items-center space-x-1.5 bg-white dark:bg-slate-800 text-medical-red hover:bg-red-50 dark:hover:bg-red-950/40 border border-medical-red/30 text-xs font-bold px-3 py-2 rounded-xl transition shadow-sm"
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>Sign In</span>
-              </Link>
-
-              {/* Persona Switcher Pill */}
-              <button
-                onClick={() => setIsDemoModalOpen(true)}
-                className="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-medical-red dark:hover:border-medical-red bg-slate-50 dark:bg-slate-800 text-xs transition"
-                title="Switch Persona / Test Roles"
-              >
-                {currentUser ? (
-                  <>
-                    <img
-                      src={currentUser.profile_image}
-                      alt={currentUser.name}
-                      className="w-5 h-5 rounded-full object-cover"
-                    />
+              {/* Dedicated Sign In & Register Buttons for Guests */}
+              {!currentUser ? (
+                <div className="flex items-center space-x-2">
+                  <Link
+                    href="/auth"
+                    className="inline-flex items-center space-x-1.5 bg-white dark:bg-slate-800 text-medical-red hover:bg-red-50 dark:hover:bg-red-950/40 border border-medical-red/30 text-xs font-bold px-3 py-2 rounded-xl transition shadow-sm"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Sign In</span>
+                  </Link>
+                  <Link
+                    href="/auth?mode=register"
+                    className="hidden sm:inline-flex items-center space-x-1.5 bg-medical-red hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow-sm"
+                  >
+                    <span>Register</span>
+                  </Link>
+                </div>
+              ) : (
+                /* Authenticated User Display */
+                <div className="flex items-center space-x-2">
+                  <Link
+                    href={
+                      currentUser.role === 'admin'
+                        ? '/admin/dashboard'
+                        : currentUser.role === 'donor'
+                        ? '/donor/dashboard'
+                        : '/recipient/dashboard'
+                    }
+                    className="flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-medical-red bg-slate-50 dark:bg-slate-800 text-xs transition"
+                  >
+                    {currentUser.profile_image ? (
+                      <img
+                        src={currentUser.profile_image}
+                        alt={currentUser.name}
+                        className="w-5 h-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-red-100 text-medical-red font-bold text-[10px] flex items-center justify-center">
+                        {currentUser.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div className="text-left hidden md:block">
                       <span className="font-semibold text-slate-800 dark:text-slate-200 block text-[11px] leading-tight">
-                        {currentUser.name.split(' ')[0]}
+                        {currentUser.name}
                       </span>
                       <span className="text-[9px] text-slate-500 capitalize">{currentUser.role}</span>
                     </div>
-                  </>
-                ) : (
-                  <>
-                    <User className="w-4 h-4 text-slate-500" />
-                    <span className="hidden md:inline font-medium text-slate-600 dark:text-slate-300 text-xs">
-                      Guest
-                    </span>
-                  </>
-                )}
-                <span className="text-[10px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 font-bold px-1.5 py-0.5 rounded">
-                  Demo
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+                  </Link>
 
-              {/* Logout button if authenticated */}
-              {currentUser && (
-                <button
-                  onClick={() => {
-                    logout();
-                    fetch('/api/auth/session', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'logout' }),
-                    });
-                  }}
-                  className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                  <button
+                    onClick={() => {
+                      logout();
+                      fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'logout' }),
+                      });
+                    }}
+                    className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
               )}
 
               {/* Notifications Dropdown Toggle */}
@@ -423,12 +426,6 @@ export const Navbar: React.FC = () => {
           </div>
         )}
       </header>
-
-      {/* Demo Switcher Modal */}
-      <DemoSwitcherModal
-        isOpen={isDemoModalOpen}
-        onClose={() => setIsDemoModalOpen(false)}
-      />
     </>
   );
 };

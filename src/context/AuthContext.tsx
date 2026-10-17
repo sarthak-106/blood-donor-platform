@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Donor, UserRole } from '@/lib/types';
 import { db } from '@/lib/db';
-import { SEED_USERS } from '@/lib/seedData';
 
 export interface DemoPersona {
   id: string;
@@ -14,40 +13,7 @@ export interface DemoPersona {
   badge?: string;
 }
 
-export const DEMO_PERSONAS: DemoPersona[] = [
-  {
-    id: 'user-recipient-1',
-    name: 'Priya Sharma',
-    role: 'recipient',
-    description: 'Patient Recipient • Active B+ request at AIIMS New Delhi',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-    badge: 'Recipient',
-  },
-  {
-    id: 'user-donor-1',
-    name: 'Rajesh Patel',
-    role: 'donor',
-    description: 'Verified O- Universal Donor • 14 Donations in Mumbai',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150',
-    badge: 'Donor (O-)',
-  },
-  {
-    id: 'user-hospital-1',
-    name: 'Dr. Ananya Sen',
-    role: 'hospital',
-    description: 'Hospital Coordinator • AIIMS New Delhi Trauma Centre',
-    avatar: 'https://images.unsplash.com/photo-1594824813572-c28fa4c6eb27?w=150',
-    badge: 'AIIMS Staff',
-  },
-  {
-    id: 'user-admin-1',
-    name: 'Vikram Malhotra',
-    role: 'admin',
-    description: 'System Administrator • National Blood Registry Directorate',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    badge: 'Admin',
-  },
-];
+export const DEMO_PERSONAS: DemoPersona[] = [];
 
 interface AuthContextType {
   currentUser: User | null;
@@ -71,39 +37,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentDonor, setCurrentDonor] = useState<Donor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadUser = (userId: string | null) => {
-    if (!userId) {
-      // Default to David Chen (Donor) for immediate rich experience or Sarah Jenkins
-      const defaultUser = SEED_USERS[0]; // Sarah Jenkins
-      setCurrentUser(defaultUser);
-      const donor = db.getDonorByUserId(defaultUser.id);
-      setCurrentDonor(donor || null);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(AUTH_STORAGE_KEY, defaultUser.id);
-      }
-      setIsLoading(false);
-      return;
-    }
+  // Load session from server or storage
+  useEffect(() => {
+    async function initAuth() {
+      try {
+        // 1. Try server session first
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
 
-    const user = db.getUserById(userId);
-    if (user) {
-      setCurrentUser(user);
-      const donor = db.getDonorByUserId(user.id);
-      setCurrentDonor(donor || null);
-    } else {
+        if (data.success && data.user) {
+          const userObj: User = {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            phone: data.user.phone,
+            role: data.user.role as UserRole,
+            profile_image: data.user.profile_image,
+            verification_status: data.user.verification_status,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setCurrentUser(userObj);
+          const donor = db.getDonorByUserId(userObj.id);
+          setCurrentDonor(donor || null);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2. Fallback to localStorage for client-created profile if present
+        if (typeof window !== 'undefined') {
+          const savedUserId = localStorage.getItem(AUTH_STORAGE_KEY);
+          if (savedUserId) {
+            const user = db.getUserById(savedUserId);
+            if (user) {
+              setCurrentUser(user);
+              const donor = db.getDonorByUserId(user.id);
+              setCurrentDonor(donor || null);
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Session sync error', e);
+      }
+
+      // 3. Website is live: Guests start unauthenticated (null)
       setCurrentUser(null);
       setCurrentDonor(null);
-    }
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUserId = localStorage.getItem(AUTH_STORAGE_KEY);
-      loadUser(savedUserId);
-    } else {
       setIsLoading(false);
     }
+
+    initAuth();
   }, []);
 
   const refreshUserData = () => {
@@ -135,12 +120,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(AUTH_STORAGE_KEY);
     }
+    fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    }).catch(() => {});
   };
 
   const login = (email: string, role?: UserRole): boolean => {
     let user = db.getUserByEmail(email);
     if (!user) {
-      // Create user on the fly for demo convenience
       user = db.createUser({
         name: email.split('@')[0],
         email,
@@ -203,14 +192,14 @@ export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     return {
-      currentUser: SEED_USERS[0],
+      currentUser: null,
       currentDonor: null,
-      isAuthenticated: true,
+      isAuthenticated: false,
       isLoading: false,
       loginAsPersona: () => {},
       loginAsGuest: () => {},
       login: () => true,
-      register: () => SEED_USERS[0],
+      register: () => ({} as User),
       logout: () => {},
       refreshUserData: () => {},
     };

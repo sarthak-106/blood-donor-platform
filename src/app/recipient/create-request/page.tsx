@@ -113,6 +113,10 @@ export default function CreateRequestPage() {
       setError('Please provide a contact phone number.');
       return;
     }
+    if (!prescriptionFile) {
+      setError('Please upload the Blood Request Form or Doctor Requisition Slip (Mandatory).');
+      return;
+    }
 
     try {
       const newReq = db.createBloodRequest({

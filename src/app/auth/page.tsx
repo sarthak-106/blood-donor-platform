@@ -170,13 +170,14 @@ function OtpInput({ value, onChange }: { value: string[]; onChange: (v: string[]
 // ─── File Upload Component ────────────────────────────────────────────────────
 
 function FileUpload({
-  file, onFileChange, label, required, hint,
+  file, onFileChange, label, required, hint, error,
 }: {
   file: File | null;
   onFileChange: (f: File | null) => void;
   label: string;
   required?: boolean;
   hint?: string;
+  error?: string;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -198,6 +199,8 @@ function FileUpload({
     }
     onFileChange(f);
   };
+
+  const displayError = error || uploadError;
 
   return (
     <div className="space-y-1.5">
@@ -255,13 +258,13 @@ function FileUpload({
         </div>
       )}
 
-      {uploadError && (
+      {displayError && (
         <p className="flex items-center gap-1 text-[11px] text-red-500">
           <AlertCircle className="w-3 h-3" />
-          {uploadError}
+          {displayError}
         </p>
       )}
-      {hint && !uploadError && (
+      {hint && !displayError && (
         <p className="text-[11px] text-slate-400">{hint}</p>
       )}
     </div>
@@ -563,8 +566,10 @@ function RecipientForm({
     if (!fd.get('hospital')) errs.hospital = 'Hospital name is required.';
     if (!fd.get('state')) errs.state = 'State is required.';
     if (!fd.get('city')) errs.city = 'City is required.';
-    if (!validatePinCode(fd.get('pin_code') as string)) errs.pin_code = 'PIN code must be 6 digits.';
     if (!fd.get('required_date')) errs.required_date = 'Required date and time is required.';
+    if (!reqFile) {
+      errs.request_document = 'Upload Blood Request Form is mandatory. Please attach a doctor requisition slip, prescription, or hospital letter.';
+    }
     return errs;
   };
 
@@ -730,11 +735,22 @@ function RecipientForm({
         />
       </InputField>
 
-      {/* File Upload */}
+      {/* File Upload (Mandatory) */}
       <FileUpload
         file={reqFile}
-        onFileChange={setReqFile}
-        label="Upload Blood Request Form (Optional)"
+        onFileChange={(f) => {
+          setReqFile(f);
+          if (f && errors.request_document) {
+            setErrors((prev) => {
+              const updated = { ...prev };
+              delete updated.request_document;
+              return updated;
+            });
+          }
+        }}
+        label="Upload Blood Request Form (Mandatory)"
+        required={true}
+        error={errors.request_document}
         hint="Upload doctor requisition slip or hospital certificate. Files are kept strictly confidential and accessible only to authorized medical reviewers."
       />
 

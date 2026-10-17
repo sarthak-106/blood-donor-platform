@@ -55,9 +55,18 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     const refNumber = `BDP-${Date.now().toString(36).toUpperCase()}`;
 
-    // Process file upload if provided (recipient blood request form)
+    // Process file upload (Mandatory for recipient blood request)
     let savedDocMeta: { fileName: string; fileSize: number; mimeType: string; securePath: string } | null = null;
     const requestDocFile = formData.get('request_document') as File | null;
+
+    if (role === 'recipient') {
+      if (!requestDocFile || requestDocFile.size === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Upload Blood Request Form is mandatory. Please attach a doctor prescription, hospital requisition slip, or medical authorization.' },
+          { status: 400 }
+        );
+      }
+    }
 
     if (requestDocFile && requestDocFile.size > 0) {
       if (requestDocFile.size > MAX_FILE_SIZE) {
