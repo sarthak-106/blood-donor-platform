@@ -1,9 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { BloodGroup, DonorAvailability } from '@/lib/types';
 import { prisma } from '@/lib/prismaClient';
+import { getSession, SESSION_COOKIE } from '@/lib/session';
+import { ALL_BLOOD_GROUPS } from '@/lib/compatibility';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const bloodGroup = searchParams.get('bloodGroup') as BloodGroup | undefined;
@@ -15,7 +17,9 @@ export async function GET(request: Request) {
 
     // Try fetching from Prisma DB
     try {
-      const where: any = {};
+      const where: any = {
+        visibility: { not: 'Private' },
+      };
       if (bloodGroup && bloodGroup !== ('All' as any)) {
         where.blood_group = bloodGroup;
       }
@@ -67,10 +71,48 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Role check: Only authenticated donor or admin can create/modify donor profile
+    const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value;
+    if (!sessionCookie) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required. Please sign in.' },
+        { status: 401 }
+      );
+    }
+
+    const session = getSession(sessionCookie);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Session expired.' }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: session.userId } });
+    if (!user || (user.role !== 'donor' && user.role !== 'admin')) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Only donor or admin accounts can perform this action.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
-    const created = db.createDonor(body);
+
+    if (!body.name || typeof body.name !== 'string') {
+      return NextResponse.json({ success: false, error: 'Donor name is required.' }, { status: 400 });
+    }
+
+    if (!body.blood_group || !ALL_BLOOD_GROUPS.includes(body.blood_group)) {
+      return NextResponse.json({ success: false, error: 'Valid blood group is required.' }, { status: 400 });
+    }
+
+    if (!body.city || typeof body.city !== 'string') {
+      return NextResponse.json({ success: false, error: 'City is required.' }, { status: 400 });
+    }
+
+    const created = db.createDonor({
+      ...body,
+      user_id: user.id,
+    });
 
     // Also persist into Prisma database asynchronously
     try {

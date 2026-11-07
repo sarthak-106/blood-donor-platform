@@ -1,8 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeBloodReportWithGemini, fallbackHeuristicAnalysis } from '@/lib/gemini';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+
+const MAX_REPORT_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+];
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req.headers);
+
+    // Rate limiting: 10 report analyses per 10 minutes per IP
+    const rateCheck = checkRateLimit(`ai_scan_${ip}`, 10, 10 * 60 * 1000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Rate limit reached. Please wait ${rateCheck.resetSeconds} seconds before scanning another report.`,
+        },
+        { status: 429 }
+      );
+    }
+
     const contentType = req.headers.get('content-type') || '';
 
     // Handle JSON body with base64
@@ -19,7 +43,29 @@ export async function POST(req: NextRequest) {
 
       // Clean base64 header if included (e.g. data:image/png;base64,...)
       const cleanedBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-      const detectedMime = mimeType || (base64Data.includes(';') ? base64Data.split(';')[0].replace('data:', '') : 'image/jpeg');
+      const detectedMime =
+        mimeType ||
+        (base64Data.includes(';')
+          ? base64Data.split(';')[0].replace('data:', '')
+          : 'image/jpeg');
+
+      if (!ALLOWED_MIME_TYPES.includes(detectedMime.toLowerCase())) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Unsupported document format. Only PDF, JPG, PNG, and WEBP lab reports are accepted.',
+          },
+          { status: 400 }
+        );
+      }
+
+      const approxSize = Math.ceil((cleanedBase64.length * 3) / 4);
+      if (approxSize > MAX_REPORT_SIZE) {
+        return NextResponse.json(
+          { success: false, error: 'Report file exceeds the 10 MB size limit.' },
+          { status: 400 }
+        );
+      }
 
       const analysis = await analyzeBloodReportWithGemini(cleanedBase64, detectedMime, fileName);
       return NextResponse.json({ success: true, data: analysis });
@@ -33,6 +79,23 @@ export async function POST(req: NextRequest) {
       if (!file) {
         return NextResponse.json(
           { success: false, error: 'No file uploaded in form data' },
+          { status: 400 }
+        );
+      }
+
+      if (file.size > MAX_REPORT_SIZE) {
+        return NextResponse.json(
+          { success: false, error: 'Report file exceeds maximum allowed size of 10 MB.' },
+          { status: 400 }
+        );
+      }
+
+      if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid file type. Only PDF, JPG, PNG, and WEBP medical documents are accepted.',
+          },
           { status: 400 }
         );
       }

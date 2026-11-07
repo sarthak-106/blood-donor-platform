@@ -25,11 +25,18 @@ import {
   ArrowLeft,
   Lock,
   HeartHandshake,
+  Phone,
+  Mail,
+  MessageSquare,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   formatDate,
   getAvailabilityBadgeStyle,
   getVerificationBadgeStyle,
+  formatPublicDonorName,
+  formatApproximateArea,
+  maskPhoneNumber,
 } from '@/lib/utils';
 import { RBC_COMPATIBILITY, MEDICAL_SAFETY_DISCLAIMER } from '@/lib/compatibility';
 
@@ -40,20 +47,76 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
   const { currentUser } = useAuth();
 
   const [donor, setDonor] = useState<Donor | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isQROpen, setIsQROpen] = useState(false);
   const [isFav, setIsFav] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [hasAcceptedRequest, setHasAcceptedRequest] = useState(false);
 
   useEffect(() => {
+    // 1. Try in-memory store
     const foundDonor = db.getDonorById(donorId);
     if (foundDonor) {
       setDonor(foundDonor);
+      setLoading(false);
       if (currentUser) {
         setIsFav(db.isFavorite(currentUser.id, foundDonor.id));
       }
+    } else {
+      // 2. Fetch from database API route if not in memory
+      fetch('/api/donors')
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success && Array.isArray(json.data)) {
+            const match = json.data.find((d: any) => d.id === donorId || d.user_id === donorId);
+            if (match) {
+              setDonor(match);
+              if (currentUser) {
+                setIsFav(db.isFavorite(currentUser.id, match.id));
+              }
+            }
+          }
+        })
+        .catch((err) => console.error('Failed to load donor profile:', err))
+        .finally(() => setLoading(false));
     }
   }, [donorId, currentUser]);
+
+  // Check if contact info should be revealed
+  // Contact is revealed ONLY IF:
+  // 1) Current user is the donor themselves (currentUser.id === donor.user_id)
+  // 2) Current user is an administrator (currentUser.role === 'admin')
+  // 3) Current user is a recipient who has an accepted request with this donor
+  const isOwnerOrAdmin = currentUser && (currentUser.id === donor?.user_id || currentUser.role === 'admin');
+
+  useEffect(() => {
+    if (!currentUser || !donor) return;
+    if (isOwnerOrAdmin) {
+      setHasAcceptedRequest(true);
+      return;
+    }
+
+    // Check if recipient has an accepted request with this donor
+    const requests = db.getBloodRequests();
+    const accepted = requests.some(
+      (r) =>
+        r.requester_id === currentUser.id &&
+        (r.status === 'Donor Accepted' || r.status === 'In Progress' || r.status === 'Fulfilled')
+    );
+    setHasAcceptedRequest(accepted);
+  }, [currentUser, donor, isOwnerOrAdmin]);
+
+  const canViewContact = Boolean(isOwnerOrAdmin || hasAcceptedRequest);
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <div className="w-8 h-8 rounded-full border-2 border-medical-red border-t-transparent animate-spin mx-auto" />
+        <p className="text-xs text-slate-500">Loading donor profile...</p>
+      </div>
+    );
+  }
 
   if (!donor) {
     return (
@@ -62,7 +125,7 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
         <p className="text-xs text-slate-500">The donor profile you requested does not exist or has been made private.</p>
         <Link
           href="/find-donor"
-          className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-medical-red text-white font-bold text-xs"
+          className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-medical-red text-white font-bold text-xs shadow-sm hover:bg-red-700 transition"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Find Donors</span>
@@ -77,9 +140,12 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
   const donationHistory = db.getDonationHistoryByDonor(donor.id);
   const compatData = RBC_COMPATIBILITY[donor.blood_group];
 
+  const displayName = canViewContact ? donor.name : formatPublicDonorName(donor.name);
+  const displayLocation = formatApproximateArea(donor.area, donor.city);
+
   const handleToggleFavorite = () => {
     if (!currentUser) {
-      alert('Please select or log in as a persona to favorite donors.');
+      alert('Please select or log in to favorite donors.');
       return;
     }
     const nextState = db.toggleFavorite(currentUser.id, donor.id);
@@ -135,7 +201,7 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                  {donor.name}
+                  {displayName}
                 </h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${verifyStyle.bg}`}>
                   {verifyStyle.label}
@@ -151,7 +217,7 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center">
                   <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                  {donor.area}, {donor.city} (PIN: {donor.pin_code})
+                  {displayLocation}
                 </span>
                 <span>•</span>
                 <span className="flex items-center">
@@ -240,6 +306,93 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
         )}
       </div>
 
+      {/* PRIVACY & CONTACT REVEAL SECTION */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center space-x-2">
+            <Lock className="w-5 h-5 text-medical-red" />
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+              Donor Direct Contact & Privacy Protection
+            </h2>
+          </div>
+          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+            canViewContact ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+          }`}>
+            {canViewContact ? '✓ Access Granted' : '🔒 Protected'}
+          </span>
+        </div>
+
+        {canViewContact ? (
+          <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-3">
+            <div className="flex items-center space-x-2 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                {isOwnerOrAdmin ? 'You are viewing your own profile or administrative console.' : 'Request Accepted: Contact details unlocked for patient coordination.'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="flex items-center space-x-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50">
+                <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Phone Number</span>
+                  <a href={`tel:${donor.phone}`} className="font-bold text-sm text-slate-900 dark:text-white hover:text-emerald-600 truncate block">
+                    {donor.phone || 'Phone not listed'}
+                  </a>
+                </div>
+                {donor.phone && (
+                  <a
+                    href={`tel:${donor.phone}`}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition"
+                  >
+                    Call
+                  </a>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50">
+                <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Email Address</span>
+                  <a href={`mailto:${donor.email}`} className="font-semibold text-xs text-slate-800 dark:text-slate-200 hover:text-emerald-600 truncate block">
+                    {donor.email || 'Email not listed'}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                  <Lock className="w-3.5 h-3.5 text-medical-red" />
+                  <span>Contact Information is Kept Confidential</span>
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
+                  To protect voluntary donors from spam and unsolicited calls, direct phone and contact coordinates are revealed <strong>only after the donor formally accepts your blood request</strong>.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsRequestModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-medical-red hover:bg-red-700 text-white font-bold text-xs shadow-sm transition flex items-center justify-center space-x-1.5 shrink-0"
+              >
+                <HeartHandshake className="w-3.5 h-3.5" />
+                <span>Request Blood to Unlock Contact</span>
+              </button>
+            </div>
+
+            <div className="flex items-center space-x-3 pt-1 text-xs text-slate-400">
+              <span className="font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">
+                {maskPhoneNumber(donor.phone)}
+              </span>
+              <span>• Contact masked until request acceptance</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Grid: Stats, Compatibility & Privacy */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -278,14 +431,6 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
               </span>
               <span className="text-[10px] text-slate-400 font-semibold uppercase">Last Donation</span>
             </div>
-          </div>
-
-          {/* Privacy Note */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 flex items-start space-x-2">
-            <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-            <span>
-              Contact details and full phone numbers are protected under HIPAA/GDPR rules and only exchanged upon mutual request approval.
-            </span>
           </div>
         </div>
 
@@ -338,15 +483,15 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
                   className="flex items-center space-x-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800"
                 >
                   <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center text-amber-600 font-bold shrink-0">
-                    🏆
+                    <Award className="w-4 h-4" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  <div>
+                    <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">
                       {ach.name}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    </span>
+                    <span className="text-[10px] text-slate-400 line-clamp-1">
                       {ach.description}
-                    </p>
+                    </span>
                   </div>
                 </div>
               ))}
@@ -356,68 +501,64 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Donation History Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+      {donationHistory.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-medical-red" />
-            <span>Verified Donation Records</span>
+            <span>Verified Donation History Log</span>
           </h3>
-          <span className="text-xs text-slate-400">
-            {donationHistory.length} verified records on ledger
-          </span>
-        </div>
 
-        {donationHistory.length === 0 ? (
-          <div className="py-6 text-center text-xs text-slate-400">
-            No past donation records logged in the system.
-          </div>
-        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase font-bold text-[10px]">
-                <tr>
-                  <th className="px-4 py-3 rounded-l-xl">Date</th>
-                  <th className="px-4 py-3">Facility / Blood Center</th>
-                  <th className="px-4 py-3">Donation Type</th>
-                  <th className="px-4 py-3">Units</th>
-                  <th className="px-4 py-3 rounded-r-xl">Certificate / ID</th>
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase text-[10px]">
+                  <th className="p-3">Donation Date</th>
+                  <th className="p-3">Hospital / Facility</th>
+                  <th className="p-3">Component Donated</th>
+                  <th className="p-3">Units</th>
+                  <th className="p-3">Verification ID</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                {donationHistory.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                    <td className="px-4 py-3 font-semibold">{formatDate(rec.donation_date)}</td>
-                    <td className="px-4 py-3">{rec.hospital_or_blood_bank}</td>
-                    <td className="px-4 py-3">{rec.donation_type}</td>
-                    <td className="px-4 py-3">{rec.units_donated} Unit</td>
-                    <td className="px-4 py-3 font-mono text-[11px] text-medical-red font-bold">
-                      {rec.certificate_url || 'CERT-VERIFIED'}
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {donationHistory.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                    <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                      {formatDate(item.donation_date)}
+                    </td>
+                    <td className="p-3 text-slate-700 dark:text-slate-300">
+                      {item.hospital_or_blood_bank}
+                    </td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-medical-red text-[10px] font-bold">
+                        {item.donation_type}
+                      </span>
+                    </td>
+                    <td className="p-3 font-bold text-slate-900 dark:text-white">
+                      {item.units_donated} Unit
+                    </td>
+                    <td className="p-3 font-mono text-[11px] text-slate-400">
+                      {item.certificate_url || item.id.slice(0, 8).toUpperCase()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Medical Safety Disclaimer Alert */}
-      <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
-        <span className="font-bold text-slate-800 dark:text-slate-200">Medical Safety Notice: </span>
-        {MEDICAL_SAFETY_DISCLAIMER}
-      </div>
-
-      {/* Modals */}
+      {/* Direct Blood Request Modal */}
       <DirectRequestModal
-        donor={donor}
         isOpen={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
+        donor={donor}
       />
 
+      {/* Digital QR ID Card Modal */}
       <QRCardModal
-        donor={donor}
         isOpen={isQROpen}
         onClose={() => setIsQROpen(false)}
+        donor={donor}
       />
     </div>
   );

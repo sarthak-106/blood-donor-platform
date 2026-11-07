@@ -6,6 +6,7 @@ import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
 import { DirectRequestModal } from './DirectRequestModal';
 import { MapPin, Navigation, Phone, ShieldCheck, Heart, Droplet, User, Eye, Layers, Globe } from 'lucide-react';
 import Link from 'next/link';
+import { formatPublicDonorName, formatApproximateArea } from '@/lib/utils';
 
 interface DonorMapPreviewProps {
   donors: Donor[];
@@ -296,14 +297,14 @@ export const DonorMapPreview: React.FC<DonorMapPreviewProps> = ({ donors, select
               <div>
                 <div className="flex items-center space-x-1">
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                    {selectedDonor.name}
+                    {formatPublicDonorName(selectedDonor.name)}
                   </h4>
                   {selectedDonor.verification_status === 'Verified' && (
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                   )}
                 </div>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {selectedDonor.area}, {selectedDonor.city}
+                  {formatApproximateArea(selectedDonor.area, selectedDonor.city)}
                 </span>
               </div>
             </div>

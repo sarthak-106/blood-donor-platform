@@ -42,7 +42,7 @@ export const Footer: React.FC = () => {
                 <Link href="/find-donor" className="hover:text-white transition">Find Donors</Link>
               </li>
               <li>
-                <Link href="/blood-recognition" className="hover:text-white transition">AI Blood Scanner</Link>
+                <Link href="/blood-recognition" className="hover:text-white transition">Blood Group Guide</Link>
               </li>
               <li>
                 <Link href="/blood-compatibility" className="hover:text-white transition">Compatibility Matrix</Link>
@@ -71,9 +71,6 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/donor/history" className="hover:text-white transition">Donation History</Link>
-              </li>
-              <li>
-                <Link href="/admin/dashboard" className="hover:text-white transition">Admin & Hospital Console</Link>
               </li>
             </ul>
           </div>
@@ -114,7 +111,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom copyright */}
         <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 pt-4">
-          <p>© {new Date().getFullYear()} Blood Donor Finder & AI Recognition Platform. Built with Vibe Coding Standards.</p>
+          <p>© {new Date().getFullYear()} BloodDonor Platform. All rights reserved.</p>
           <div className="flex items-center space-x-2 mt-2 sm:mt-0">
             <span>Powered by Next.js & Tailwind CSS</span>
           </div>

@@ -1,6 +1,12 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { Shield, AlertTriangle, Scale, Heart } from 'lucide-react';
 import { MEDICAL_SAFETY_DISCLAIMER } from '@/lib/compatibility';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service & Clinical Protocols',
+  description: 'Terms of service, zero-commercialization agreement, and clinical responsibility protocols for BloodDonor Platform.',
+};
 
 export default function TermsPage() {
   return (

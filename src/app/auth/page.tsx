@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Droplet, Heart, User, ArrowRight, ArrowLeft, ChevronDown,
   Phone, Mail, MapPin, Calendar, Loader2, CheckCircle2,
-  AlertCircle, Eye, EyeOff, Upload, X, FileText, ShieldCheck,
+  AlertCircle, Eye, EyeOff, Upload, X, FileText, Shield, ShieldCheck,
   Hospital, Stethoscope, Sparkles, RefreshCw, KeyRound, Lock,
   Camera, HelpCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '@/context/AuthContext';
+import { CaptchaChallenge } from '@/components/ui/CaptchaChallenge';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -290,7 +291,12 @@ function DonorForm({
   const [showHospitalList, setShowHospitalList] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState('');
   const [consent, setConsent] = useState(false);
+  const [eligibilityAge, setEligibilityAge] = useState(true);
+  const [eligibilityWeight, setEligibilityWeight] = useState(true);
+  const [eligibilityGap, setEligibilityGap] = useState(true);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
   const filteredHospitals = INDIAN_HOSPITALS.filter((h) =>
@@ -306,7 +312,11 @@ function DonorForm({
     if (!validateEmail(fd.get('email') as string)) errs.email = 'Enter a valid email address.';
     if (!validatePinCode(fd.get('pin_code') as string)) errs.pin_code = 'PIN code must be 6 digits.';
     if (isRareBlood && !fd.get('rare_blood_type')) errs.rare_blood_type = 'Please describe your rare blood type.';
+    if (!eligibilityAge || !eligibilityWeight || !eligibilityGap) {
+      errs.eligibility = 'You must confirm that you meet all medical donor eligibility conditions (Age 18–65, weight 45 kg+, 90-day donation gap).';
+    }
     if (!consent) errs.consent = 'You must agree to the terms and privacy policy.';
+    if (!captchaAnswer.trim()) errs.captcha = 'Please solve the anti-spam verification challenge.';
     return errs;
   };
 
@@ -319,6 +329,9 @@ function DonorForm({
     fd.set('availability', availability);
     fd.set('preferred_hospital', selectedHospital || hospitalSearch);
     if (profilePhoto) fd.set('profile_photo', profilePhoto);
+    fd.set('consent', consent ? 'true' : '');
+    fd.set('captcha_token', captchaToken);
+    fd.set('captcha_answer', captchaAnswer);
 
     const errs = validate(fd);
     setErrors(errs);
@@ -494,10 +507,56 @@ function DonorForm({
         </div>
       </InputField>
 
+      {/* Donor Eligibility Checklist */}
+      <div className="p-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20 space-y-3">
+        <div className="flex items-center space-x-2">
+          <Shield className="w-4 h-4 text-[#E53935]" />
+          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+            Donor Health Eligibility Checklist (NBTC Standards)
+          </h4>
+        </div>
+        <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+          <label className="flex items-center space-x-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibilityAge}
+              onChange={(e) => setEligibilityAge(e.target.checked)}
+              className="rounded text-[#E53935] focus:ring-[#E53935] h-4 w-4"
+            />
+            <span>I am aged between <strong>18 and 65 years</strong></span>
+          </label>
+          <label className="flex items-center space-x-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibilityWeight}
+              onChange={(e) => setEligibilityWeight(e.target.checked)}
+              className="rounded text-[#E53935] focus:ring-[#E53935] h-4 w-4"
+            />
+            <span>My body weight is at least <strong>45 kg</strong></span>
+          </label>
+          <label className="flex items-center space-x-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibilityGap}
+              onChange={(e) => setEligibilityGap(e.target.checked)}
+              className="rounded text-[#E53935] focus:ring-[#E53935] h-4 w-4"
+            />
+            <span>At least <strong>90 days (3 months)</strong> have passed since my last blood donation</span>
+          </label>
+        </div>
+        {errors.eligibility && (
+          <p className="flex items-center gap-1 text-[11px] text-red-500 pt-1">
+            <AlertCircle className="w-3 h-3" />
+            {errors.eligibility}
+          </p>
+        )}
+      </div>
+
       {/* Consent */}
       <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-2">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
+            name="consent"
             type="checkbox"
             checked={consent}
             onChange={(e) => setConsent(e.target.checked)}
@@ -515,6 +574,14 @@ function DonorForm({
           </p>
         )}
       </div>
+
+      <CaptchaChallenge
+        onVerify={(tok, ans) => {
+          setCaptchaToken(tok);
+          setCaptchaAnswer(ans);
+        }}
+        error={errors.captcha}
+      />
 
       <button
         type="submit"
@@ -547,6 +614,8 @@ function RecipientForm({
   const [bloodGroup, setBloodGroup] = useState('');
   const [urgency, setUrgency] = useState<'Normal' | 'Urgent' | 'Critical'>('Normal');
   const [reqFile, setReqFile] = useState<File | null>(null);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
   const urgencyColors = {
@@ -570,6 +639,9 @@ function RecipientForm({
     if (!reqFile) {
       errs.request_document = 'Upload Blood Request Form is mandatory. Please attach a doctor requisition slip, prescription, or hospital letter.';
     }
+    if (!captchaAnswer.trim()) {
+      errs.captcha = 'Please solve the anti-spam verification challenge.';
+    }
     return errs;
   };
 
@@ -581,6 +653,8 @@ function RecipientForm({
     fd.set('blood_group', bloodGroup);
     fd.set('urgency', urgency);
     if (reqFile) fd.set('request_document', reqFile);
+    fd.set('captcha_token', captchaToken);
+    fd.set('captcha_answer', captchaAnswer);
     const errs = validate(fd);
     setErrors(errs);
     if (Object.keys(errs).length === 0) onNext(fd);
@@ -754,6 +828,14 @@ function RecipientForm({
         hint="Upload doctor requisition slip or hospital certificate. Files are kept strictly confidential and accessible only to authorized medical reviewers."
       />
 
+      <CaptchaChallenge
+        onVerify={(tok, ans) => {
+          setCaptchaToken(tok);
+          setCaptchaAnswer(ans);
+        }}
+        error={errors.captcha}
+      />
+
       <button
         type="submit"
         disabled={loading}
@@ -793,6 +875,8 @@ function SignInForm({
   const [timer, setTimer] = useState(0);
   const [error, setError] = useState('');
   const [devOtp, setDevOtp] = useState('');
+  const [loginCaptchaToken, setLoginCaptchaToken] = useState('');
+  const [loginCaptchaAnswer, setLoginCaptchaAnswer] = useState('');
 
   // Forgot password sub-state
   const [isForgotPass, setIsForgotPass] = useState(false);
@@ -870,13 +954,19 @@ function SignInForm({
     setError('');
     if (!email) { setError('Email address is required.'); return; }
     if (!password) { setError('Password is required.'); return; }
+    if (!loginCaptchaAnswer.trim()) { setError('Please solve the security verification challenge.'); return; }
 
     setLoading(true);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          captchaToken: loginCaptchaToken,
+          captchaAnswer: loginCaptchaAnswer,
+        }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); return; }
@@ -1170,6 +1260,13 @@ function SignInForm({
               Forgot password?
             </button>
           </div>
+
+          <CaptchaChallenge
+            onVerify={(tok, ans) => {
+              setLoginCaptchaToken(tok);
+              setLoginCaptchaAnswer(ans);
+            }}
+          />
 
           <button
             type="submit"

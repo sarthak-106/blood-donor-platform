@@ -20,7 +20,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
-import { getAvailabilityBadgeStyle, getVerificationBadgeStyle } from '@/lib/utils';
+import { getAvailabilityBadgeStyle, getVerificationBadgeStyle, formatPublicDonorName, formatApproximateArea } from '@/lib/utils';
 
 interface DonorCardProps {
   donor: Donor;
@@ -78,7 +78,7 @@ export const DonorCard: React.FC<DonorCardProps> = ({ donor, onFavoriteChange })
                     href={`/donors/${donor.id}`}
                     className="font-bold text-sm sm:text-base text-slate-900 dark:text-white hover:text-medical-red transition"
                   >
-                    {donor.name}
+                    {formatPublicDonorName(donor.name)}
                   </Link>
                   {donor.emergency_ready && (
                     <span
@@ -92,9 +92,9 @@ export const DonorCard: React.FC<DonorCardProps> = ({ donor, onFavoriteChange })
                 </div>
 
                 <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  <span className="flex items-center truncate max-w-[140px]">
+                  <span className="flex items-center truncate max-w-[160px]">
                     <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
-                    {donor.area}, {donor.city}
+                    {formatApproximateArea(donor.area, donor.city)}
                   </span>
                 </div>
               </div>

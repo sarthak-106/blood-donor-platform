@@ -28,7 +28,7 @@ import {
 
 export default function HomePage() {
   const router = useRouter();
-  const [selectedBloodGroup, setSelectedBloodGroup] = useState<BloodGroup>('B+');
+  const [selectedBloodGroup, setSelectedBloodGroup] = useState<BloodGroup | ''>('');
   const [selectedCity, setSelectedCity] = useState('New Delhi');
   const [includeCompatible, setIncludeCompatible] = useState(true);
 
@@ -41,6 +41,10 @@ export default function HomePage() {
 
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedBloodGroup) {
+      router.push(`/find-donor?city=${encodeURIComponent(selectedCity)}`);
+      return;
+    }
     router.push(
       `/find-donor?bloodGroup=${encodeURIComponent(selectedBloodGroup)}&city=${encodeURIComponent(
         selectedCity
@@ -100,11 +104,17 @@ export default function HomePage() {
                       onChange={(e) => setSelectedBloodGroup(e.target.value as BloodGroup)}
                       className="w-full bg-transparent text-sm font-extrabold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
                     >
-                      {ALL_BLOOD_GROUPS.map((bg) => (
-                        <option key={bg} value={bg} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                          {bg} ({RBC_COMPATIBILITY[bg].canReceiveFrom.length} compatible types)
-                        </option>
-                      ))}
+                      <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">
+                        Select blood group
+                      </option>
+                      {ALL_BLOOD_GROUPS.map((bg) => {
+                        const count = RBC_COMPATIBILITY[bg].canReceiveFrom.length;
+                        return (
+                          <option key={bg} value={bg} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                            {bg} — can receive from {count} {count === 1 ? 'type' : 'types'}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>
@@ -297,7 +307,7 @@ export default function HomePage() {
                       Can Receive RBC From:
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      ({compatData.canReceiveFrom.length} types)
+                      ({compatData.canReceiveFrom.length} {compatData.canReceiveFrom.length === 1 ? 'type' : 'types'})
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -313,7 +323,7 @@ export default function HomePage() {
                       Can Donate RBC To:
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      ({compatData.canDonateTo.length} types)
+                      ({compatData.canDonateTo.length} {compatData.canDonateTo.length === 1 ? 'type' : 'types'})
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -328,20 +338,20 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. AI BLOOD RECOGNITION FEATURE BANNER */}
+      {/* 4. BLOOD GROUP GUIDE FEATURE BANNER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 p-8 sm:p-12 text-white border border-slate-800 shadow-2xl overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
             <div className="lg:col-span-7 space-y-4">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>AI-Powered Blood Type Diagnostic Assistant</span>
+                <span>Certified Lab Report Reader & Reference Guide</span>
               </div>
               <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
-                Not Sure of Your Blood Group? Let AI & Antigen Logic Guide You.
+                Blood Group Guide & Pathology Report Reader
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-                Upload your laboratory report or donor test card, or answer a guided 30-second antigen questionnaire to determine your probable ABO and Rh blood group profile with biological explanations.
+                Upload your certified pathology lab report or donor card to automatically read your documented ABO and Rh blood group profile with biological compatibility explanations.
               </p>
               <div className="pt-2 flex flex-wrap gap-3">
                 <Link
@@ -349,7 +359,7 @@ export default function HomePage() {
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/30 transition flex items-center space-x-2"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Launch AI Scanner Tool</span>
+                  <span>Launch Blood Group Guide</span>
                 </Link>
                 <Link
                   href="/about"
@@ -497,7 +507,7 @@ export default function HomePage() {
 
           <div className="flex flex-wrap gap-3 shrink-0">
             <Link
-              href="/auth/register?role=donor"
+              href="/auth?mode=register&role=donor"
               className="px-6 py-3 rounded-xl bg-white text-red-700 hover:bg-red-50 font-black text-xs sm:text-sm shadow-md transition"
             >
               Register as Donor

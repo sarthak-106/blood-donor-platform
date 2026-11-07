@@ -123,7 +123,7 @@ export const Navbar: React.FC = () => {
               >
                 <div className="flex items-center space-x-1.5">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>AI Blood Scanner</span>
+                  <span>Blood Group Guide</span>
                 </div>
               </Link>
 
@@ -384,7 +384,7 @@ export const Navbar: React.FC = () => {
               className="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>AI Blood Type Scanner</span>
+              <span>Blood Group Guide</span>
             </Link>
 
             <Link

@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
+import { formatPublicDonorName } from '@/lib/utils';
 import {
   X,
   HeartHandshake,
@@ -177,7 +178,7 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                {donor ? `Request Blood from ${donor.name}` : 'Create Blood Request'}
+                {donor ? `Request Blood from ${formatPublicDonorName(donor.name)}` : 'Create Blood Request'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {donor ? `Target Blood Type: ${donor.blood_group} • ${donor.city}` : 'Broadcast to compatible nearby donors'}
@@ -201,7 +202,7 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
               <h4 className="text-lg font-bold text-slate-900 dark:text-white">Blood Request Broadcasted!</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
                 {donor
-                  ? `Your request has been delivered to ${donor.name}. You will be notified as soon as they accept.`
+                  ? `Your request has been delivered to ${formatPublicDonorName(donor.name)}. You will be notified as soon as they accept.`
                   : 'Your request has been broadcasted to all active compatible donors in your area.'}
               </p>
             </div>

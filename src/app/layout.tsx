@@ -7,9 +7,13 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
-  title: 'Blood Donor Finder & Blood Type Recognition Platform',
+  title: {
+    default: 'BloodDonor Platform — Emergency Blood Matching & Donor Registry',
+    template: '%s | BloodDonor Platform',
+  },
   description:
-    'A centralized digital ecosystem connecting voluntary blood donors, patients, and healthcare networks with AI-powered compatibility and emergency SOS dispatch.',
+    'A centralized digital ecosystem connecting voluntary blood donors, patients, and healthcare networks with real-time transfusion compatibility, GPS discovery, and emergency SOS dispatch.',
+  keywords: ['blood donor', 'find blood', 'emergency blood SOS', 'blood compatibility', 'blood banks india'],
 };
 
 export default function RootLayout({

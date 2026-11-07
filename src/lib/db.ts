@@ -134,7 +134,7 @@ class DatabaseEngine {
     emergencyReadyOnly?: boolean;
     searchQuery?: string;
   }): Donor[] {
-    let result = [...this.state.donors];
+    let result = this.state.donors.filter((d) => d.visibility !== 'Private');
 
     if (filters) {
       if (filters.bloodGroup) {
@@ -245,6 +245,16 @@ class DatabaseEngine {
       return this.state.donors[index];
     }
     return undefined;
+  }
+
+  deleteDonor(donorId: string): boolean {
+    const initialLen = this.state.donors.length;
+    this.state.donors = this.state.donors.filter((d) => d.id !== donorId);
+    if (this.state.donors.length !== initialLen) {
+      this.persist();
+      return true;
+    }
+    return false;
   }
 
   // --- Blood Requests & Emergency SOS ---

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { BloodGroup } from '@/lib/types';
 import { ALL_BLOOD_GROUPS, RBC_COMPATIBILITY, PLASMA_COMPATIBILITY, isBloodCompatible, MEDICAL_SAFETY_DISCLAIMER } from '@/lib/compatibility';
@@ -22,6 +22,10 @@ export default function BloodCompatibilityPage() {
   const [activeTab, setActiveTab] = useState<'RBC' | 'Plasma' | 'Platelets'>('RBC');
   const [selectedRecipient, setSelectedRecipient] = useState<BloodGroup>('A+');
   const [selectedDonor, setSelectedDonor] = useState<BloodGroup>('O-');
+
+  useEffect(() => {
+    document.title = 'Blood Compatibility Matrix & Transfusion Simulator | BloodDonor Platform';
+  }, []);
 
   const isCurrentPairCompatible = isBloodCompatible(
     selectedDonor,
@@ -275,7 +279,7 @@ export default function BloodCompatibilityPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
           <div className="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700">
             <span className="font-bold text-white block mb-1">Age & Weight</span>
-            <span>Must be between 18–65 years old and weigh at least 50 kg (110 lbs).</span>
+            <span>Must be between 18–65 years old and weigh at least 45 kg (NBTC Indian Blood Transfusion guidelines).</span>
           </div>
           <div className="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700">
             <span className="font-bold text-white block mb-1">Hemoglobin Levels</span>
@@ -283,7 +287,7 @@ export default function BloodCompatibilityPage() {
           </div>
           <div className="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700">
             <span className="font-bold text-white block mb-1">Donation Interval</span>
-            <span>Wait at least 56 days between whole blood donations (112 days for Power Red).</span>
+            <span>Mandatory minimum 90-day gap (3 months) between whole blood donations.</span>
           </div>
         </div>
       </div>

@@ -20,13 +20,41 @@ import {
   ArrowRight,
   AlertTriangle,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { formatDate, getUrgencyBadgeStyle, getStatusBadgeStyle } from '@/lib/utils';
 
 export default function RecipientDashboard() {
-  const { currentUser } = useAuth();
+  const router = useRouter();
+  const { currentUser, logout } = useAuth();
   const [requests, setRequests] = useState<BloodRequest[]>([]);
   const [favorites, setFavorites] = useState<Donor[]>([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmationText.trim().toLowerCase() !== 'delete') {
+      setDeleteError('Please type DELETE to confirm.');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch('/api/auth/account', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to delete account');
+      logout();
+      router.push('/?message=account_deleted');
+    } catch (err: any) {
+      setDeleteError(err.message || 'An error occurred while deleting your account.');
+      setIsDeleting(false);
+    }
+  };
 
   const refreshData = () => {
     if (currentUser) {
@@ -252,6 +280,91 @@ export default function RecipientDashboard() {
             {favorites.map((donor) => (
               <DonorCard key={donor.id} donor={donor} onFavoriteChange={refreshData} />
             ))}
+          </div>
+        </div>
+      )}
+      {/* Account Settings / Privacy */}
+      <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          Account Settings & Privacy
+        </h3>
+
+        <div className="p-4 rounded-2xl bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider flex items-center space-x-1.5">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Danger Zone: Delete Account</span>
+            </h4>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 max-w-lg leading-relaxed">
+              Permanently delete your recipient account, past blood requests, and personal records. This action cannot be undone.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setDeleteConfirmationText('');
+              setIsDeleteModalOpen(true);
+            }}
+            className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition flex items-center justify-center space-x-1.5 shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Account</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Account Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-medical-red flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Delete Account & Profile?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                This will permanently delete your account and personal details. This action is irreversible.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Type <span className="font-bold text-red-600">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-red-300 dark:border-red-900 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              {deleteError && (
+                <p className="text-[11px] font-semibold text-red-500">{deleteError}</p>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || deleteConfirmationText.trim().toLowerCase() !== 'delete'}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-bold shadow-md transition flex items-center justify-center space-x-1.5"
+              >
+                {isDeleting ? 'Deleting…' : 'Confirm Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

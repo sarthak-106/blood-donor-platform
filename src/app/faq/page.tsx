@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown, ChevronUp, HelpCircle, Droplet, Shield } from 'lucide-react';
 
 export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  useEffect(() => {
+    document.title = 'Frequently Asked Questions | BloodDonor Platform';
+  }, []);
 
   const faqs = [
     {

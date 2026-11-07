@@ -50,6 +50,46 @@ export function formatTimeAgo(isoDateString?: string): string {
   return `${diffDays}d ago`;
 }
 
+/**
+ * Privacy Helper: Formats full name into "First Name + Last Initial"
+ * Example: "Sneha Reddy" -> "Sneha R.", "Rajesh Patel" -> "Rajesh P."
+ */
+export function formatPublicDonorName(fullName?: string): string {
+  if (!fullName || typeof fullName !== 'string') return 'Anonymous Donor';
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const firstName = parts[0];
+  const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+  return `${firstName} ${lastInitial}.`;
+}
+
+/**
+ * Privacy Helper: Formats approximate neighborhood without exact house or street numbers
+ */
+export function formatApproximateArea(area?: string, city?: string): string {
+  const parts: string[] = [];
+  if (area) {
+    // Strip specific house/flat/building numbers
+    const cleanedArea = area.replace(/\b(?:flat|h\.no|house|plot|no\.|apt|room)\s*[\w\d\-#]+/gi, '').trim();
+    if (cleanedArea) parts.push(cleanedArea);
+  }
+  if (city && (!area || !area.toLowerCase().includes(city.toLowerCase()))) {
+    parts.push(city);
+  }
+  return parts.length > 0 ? parts.join(', ') : (city || 'India');
+}
+
+/**
+ * Privacy Helper: Masks phone number on public display
+ */
+export function maskPhoneNumber(phone?: string): string {
+  if (!phone) return '+91 ••••• •••••';
+  const cleaned = phone.trim();
+  if (cleaned.length <= 4) return '+91 ••••• •••••';
+  const lastFour = cleaned.slice(-4);
+  return `+91 ••••• ••${lastFour}`;
+}
+
 export function getBloodBadgeStyle(bloodGroup: BloodGroup): { bg: string; text: string; border: string } {
   switch (bloodGroup) {
     case 'O-':

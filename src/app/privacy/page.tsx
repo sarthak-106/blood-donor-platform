@@ -1,5 +1,11 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { Shield, Lock, Eye, FileText } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy & Donor Data Protection',
+  description: 'Our strict privacy guidelines ensuring zero unauthorized exposure of donor contact info and medical documents.',
+};
 
 export default function PrivacyPolicyPage() {
   return (

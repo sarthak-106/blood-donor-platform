@@ -2,16 +2,46 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prismaClient';
 import { createSession, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/session';
 import { verifyPassword } from '@/lib/authCrypto';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { verifyCaptcha } from '@/lib/captcha';
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req.headers);
+
+    // Rate limiting: 5 login attempts per 5 minutes per IP
+    const rateCheck = checkRateLimit(`login_${ip}`, 5, 5 * 60 * 1000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many login attempts. Please wait ${rateCheck.resetSeconds} seconds before trying again.`,
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
-    const { phone, email, password } = body;
+    const { phone, email, password, captchaToken, captchaAnswer } = body;
+
+    // Verify CAPTCHA if provided or if requested
+    if (captchaToken || captchaAnswer) {
+      const captchaRes = verifyCaptcha(captchaToken, captchaAnswer);
+      if (!captchaRes.valid) {
+        return NextResponse.json({ success: false, error: captchaRes.error || 'CAPTCHA verification failed.' }, { status: 400 });
+      }
+    }
 
     let user = null;
 
     if (phone) {
-      const normalizedPhone = phone.replace(/\s+/g, '').trim();
+      const normalizedPhone = String(phone).replace(/\s+/g, '').trim();
+      if (!/^\+\d{10,15}$/.test(normalizedPhone)) {
+        return NextResponse.json(
+          { success: false, error: 'Phone number must include country code (e.g. +91 98765 43210).' },
+          { status: 400 }
+        );
+      }
       user = await prisma.user.findFirst({ where: { phone: normalizedPhone } });
       if (!user) {
         return NextResponse.json(
@@ -20,7 +50,10 @@ export async function POST(req: NextRequest) {
         );
       }
     } else if (email) {
-      const normalizedEmail = email.toLowerCase().trim();
+      const normalizedEmail = String(email).toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return NextResponse.json({ success: false, error: 'Invalid email address format.' }, { status: 400 });
+      }
       user = await prisma.user.findFirst({ where: { email: normalizedEmail } });
       if (!user) {
         return NextResponse.json(

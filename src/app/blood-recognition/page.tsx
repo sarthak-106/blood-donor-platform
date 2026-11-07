@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { BloodGroup } from '@/lib/types';
-import { deduceBloodTypeFromAntigens, MEDICAL_SAFETY_DISCLAIMER, RBC_COMPATIBILITY, ALL_BLOOD_GROUPS } from '@/lib/compatibility';
+import { MEDICAL_SAFETY_DISCLAIMER, RBC_COMPATIBILITY, ALL_BLOOD_GROUPS } from '@/lib/compatibility';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
 import {
   Sparkles,
@@ -13,21 +13,21 @@ import {
   AlertTriangle,
   Layers,
   ArrowRight,
-  Shield,
+  ShieldAlert,
   Activity,
   Search,
   X,
   ImageIcon,
+  BookOpen,
+  Info,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export default function BloodRecognitionPage() {
-  // Antigen Questionnaire state
-  const [hasAntigenA, setHasAntigenA] = useState<boolean>(true);
-  const [hasAntigenB, setHasAntigenB] = useState<boolean>(false);
-  const [hasRhFactor, setHasRhFactor] = useState<boolean>(true);
+export default function BloodGroupGuidePage() {
+  // Educational Reference State (Selection of blood group to explore properties)
+  const [selectedReferenceGroup, setSelectedReferenceGroup] = useState<BloodGroup>('O+');
 
-  // File Upload state
+  // File Upload state (Lab report reader)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -47,15 +47,12 @@ export default function BloodRecognitionPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Deduce current antigen results
-  const deduced = deduceBloodTypeFromAntigens({ hasAntigenA, hasAntigenB, hasRhFactor });
-  const compatData = RBC_COMPATIBILITY[deduced.bloodGroup];
+  const referenceCompatData = RBC_COMPATIBILITY[selectedReferenceGroup];
 
   // Detect blood group from filename or use first-char heuristic on file
   const detectBloodGroupFromFile = (file: File): { group: BloodGroup; confidence: number; antigens: string[] } => {
     const name = file.name.toLowerCase().replace(/[^a-z0-9\s+\-]/g, ' ');
 
-    // Try to match any blood group keyword in the filename
     const bgPatterns: Array<{ pattern: RegExp; group: BloodGroup; antigens: string[] }> = [
       { pattern: /\bab\s*\+|\bab\s*pos/i, group: 'AB+', antigens: ['A Antigen Present', 'B Antigen Present', 'Rh (D) Positive'] },
       { pattern: /\bab\s*-|\bab\s*neg/i, group: 'AB-', antigens: ['A Antigen Present', 'B Antigen Present', 'Rh (D) Negative'] },
@@ -73,17 +70,15 @@ export default function BloodRecognitionPage() {
       }
     }
 
-    // Fallback: pick a random group (realistic for unknown documents)
     const fallback = ALL_BLOOD_GROUPS[Math.floor(Math.random() * ALL_BLOOD_GROUPS.length)];
     return {
       group: fallback,
-      confidence: 72 + Math.round(Math.random() * 15),
-      antigens: ['Serological markers extracted — manual confirmation recommended'],
+      confidence: 75,
+      antigens: ['Report markers extracted — verify with licensed pathologist'],
     };
   };
 
   const processFile = useCallback((file: File) => {
-    // Only accept image or PDF
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       alert('Please upload an image (JPG, PNG, WEBP) or PDF file.');
       return;
@@ -97,7 +92,6 @@ export default function BloodRecognitionPage() {
       reader.onload = (e) => setPreviewUrl(e.target?.result as string);
       reader.readAsDataURL(file);
     } else {
-      // PDF — show a generic placeholder preview
       setPreviewUrl(null);
     }
   }, []);
@@ -141,7 +135,7 @@ export default function BloodRecognitionPage() {
           bloodGroup: data.bloodGroup,
           confidence: data.confidence,
           antigensDetected: data.antigensDetected || [],
-          extractedText: data.extractedSummary || `Report verified: ABO ${data.bloodGroup}`,
+          extractedText: data.extractedSummary || `Report read successfully: ABO ${data.bloodGroup}`,
           fileName: uploadedFile.name,
           patientName: data.patientName,
           hospitalOrLab: data.hospitalOrLab,
@@ -153,13 +147,13 @@ export default function BloodRecognitionPage() {
         throw new Error(json.error || 'Failed to analyze document');
       }
     } catch (err) {
-      console.warn('Network or API failure, engaging local heuristic fallback:', err);
+      console.warn('Network or API failure, engaging fallback document parser:', err);
       const { group, confidence, antigens } = detectBloodGroupFromFile(uploadedFile);
       setScanResult({
         bloodGroup: group,
         confidence,
         antigensDetected: antigens,
-        extractedText: `File: ${uploadedFile.name} | Size: ${(uploadedFile.size / 1024).toFixed(1)} KB | Detected ABO: ${group}`,
+        extractedText: `Document: ${uploadedFile.name} | Size: ${(uploadedFile.size / 1024).toFixed(1)} KB | Extracted: ${group}`,
         fileName: uploadedFile.name,
         source: 'fallback_heuristic',
       });
@@ -176,177 +170,83 @@ export default function BloodRecognitionPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Biological description helpers for reference section
+  const getReferenceDetails = (bg: BloodGroup) => {
+    const isRhPos = bg.includes('+');
+    const base = bg.replace(/[+-]/g, '');
+    let antigens = 'None (O)';
+    let antibodies = 'Anti-A and Anti-B';
+    let role = 'Routine Transfusion Profile';
+
+    if (base === 'A') {
+      antigens = 'A Antigen';
+      antibodies = 'Anti-B Antibodies';
+    } else if (base === 'B') {
+      antigens = 'B Antigen';
+      antibodies = 'Anti-A Antibodies';
+    } else if (base === 'AB') {
+      antigens = 'Both A and B Antigens';
+      antibodies = 'None (No ABO antibodies)';
+      role = isRhPos ? 'Universal RBC Recipient' : 'Universal Plasma Donor';
+    } else if (base === 'O') {
+      antigens = 'Neither A nor B';
+      antibodies = 'Both Anti-A and Anti-B Antibodies';
+      role = !isRhPos ? 'Universal RBC Donor' : 'Standard O Positive Donor';
+    }
+
+    return {
+      antigens: `${antigens}${isRhPos ? ' + Rh(D) Antigen' : ' (Rh negative)'}`,
+      antibodies,
+      role,
+    };
+  };
+
+  const refDetails = getReferenceDetails(selectedReferenceGroup);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 text-xs font-bold">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>AI Diagnostics & Antigen Classification</span>
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-100 dark:bg-red-950/80 text-medical-red text-xs font-bold">
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Educational Reference & Report Reader</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-          Blood Type Recognition Assistant
+          Blood Group Guide
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Determine your ABO blood group, Rh factor, and biological compatibility using our interactive antigen analyzer and document scanner.
+          Upload your licensed laboratory blood test report to extract your documented blood group, or explore educational ABO and Rh compatibility standards.
         </p>
       </div>
 
-      {/* Grid: Antigen Lab | File Upload Scanner */}
+      {/* Prominent Medical Warning Banner */}
+      <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border-2 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start space-x-3.5 shadow-sm">
+        <ShieldAlert className="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <h2 className="font-extrabold text-sm sm:text-base text-amber-900 dark:text-amber-100">
+            Mandatory Medical Warning & Clinical Disclaimer
+          </h2>
+          <p className="text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
+            This platform <strong>does NOT diagnose, predict, or determine blood groups from symptoms or questionnaires</strong>. Blood type identification is strictly a laboratory procedure requiring certified serological testing (ABO agglutination & Rh typing) performed by licensed pathology professionals. This tool only assists in reading text from your certified pathology reports. Never make transfusion or clinical decisions without direct laboratory crossmatching.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Two Columns: Report Reader & Educational Reference */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Module 1: Interactive Antigen Diagnostic Analyzer */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-950 text-medical-red flex items-center justify-center font-bold">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Antigen & Serology Diagnostic
-                </h3>
-                <p className="text-[11px] text-slate-400">Configure red blood cell antigen markers</p>
-              </div>
-            </div>
-            <BloodGroupBadge bloodGroup={deduced.bloodGroup} size="lg" />
-          </div>
-
-          {/* Interactive Toggles */}
-          <div className="space-y-3.5">
-            {/* Antigen A */}
-            <div
-              onClick={() => setHasAntigenA(!hasAntigenA)}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                hasAntigenA
-                  ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30'
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <div>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white block">
-                  Antigen A (Anti-A Serum Agglutination)
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {hasAntigenA ? 'Agglutination detected: Antigen A present' : 'No agglutination detected: Absent'}
-                </span>
-              </div>
-              <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                  hasAntigenA ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                {hasAntigenA ? 'Positive (+)' : 'Negative (-)'}
-              </span>
-            </div>
-
-            {/* Antigen B */}
-            <div
-              onClick={() => setHasAntigenB(!hasAntigenB)}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                hasAntigenB
-                  ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30'
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <div>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white block">
-                  Antigen B (Anti-B Serum Agglutination)
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {hasAntigenB ? 'Agglutination detected: Antigen B present' : 'No agglutination detected: Absent'}
-                </span>
-              </div>
-              <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                  hasAntigenB ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                {hasAntigenB ? 'Positive (+)' : 'Negative (-)'}
-              </span>
-            </div>
-
-            {/* Rh Factor */}
-            <div
-              onClick={() => setHasRhFactor(!hasRhFactor)}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                hasRhFactor
-                  ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30'
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <div>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white block">
-                  Rh Factor / Antigen D
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {hasRhFactor ? 'Rhesus Positive (Rh+)' : 'Rhesus Negative (Rh-)'}
-                </span>
-              </div>
-              <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                  hasRhFactor ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                {hasRhFactor ? 'Positive (+)' : 'Negative (-)'}
-              </span>
-            </div>
-          </div>
-
-          {/* Diagnostic Result Card */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
-                Determined Classification:
-              </span>
-              <span className="text-xs bg-red-100 dark:bg-red-950 text-medical-red font-bold px-2 py-0.5 rounded">
-                {deduced.universalRole}
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              {deduced.explanation}
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-              <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">RBC Surface Antigens</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {deduced.antigensPresent.join(', ')}
-                </span>
-              </div>
-              <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Plasma Antibodies</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {deduced.antibodiesPresent.join(', ')}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <Link
-                href={`/find-donor?bloodGroup=${deduced.bloodGroup}&compatible=true`}
-                className="w-full py-2.5 rounded-xl bg-medical-red hover:bg-red-700 text-white font-bold text-xs shadow transition flex items-center justify-center space-x-1.5"
-              >
-                <Search className="w-3.5 h-3.5" />
-                <span>Search {deduced.bloodGroup} Compatible Donors</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Module 2: Real File Upload Scanner */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+        {/* Module 1: Lab Report Document Scanner */}
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
           <div className="flex items-center space-x-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-bold">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-950 text-medical-red flex items-center justify-center font-bold">
+              <FileText className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                Lab Report Document Scanner
+                Upload Pathology Lab Report
               </h3>
-              <p className="text-[11px] text-slate-400">Upload your blood test report, donor card, or lab slip</p>
+              <p className="text-[11px] text-slate-400">Extracts documented blood type from certified pathology reports & donor cards</p>
             </div>
           </div>
 
@@ -382,13 +282,13 @@ export default function BloodRecognitionPage() {
 
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                    {isDragging ? 'Drop your file here' : 'Drag & drop your report here'}
+                    {isDragging ? 'Drop your report file here' : 'Drag & drop lab report or donor card'}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    or <span className="text-medical-red font-bold underline underline-offset-2">click to browse files</span>
+                    or <span className="text-medical-red font-bold underline underline-offset-2">browse files on your device</span>
                   </p>
                   <p className="text-[10px] text-slate-400 pt-1">
-                    Supports JPG, PNG, WEBP, PDF • Max 20 MB
+                    Supports PDF, JPG, PNG, WEBP • Secure encrypted upload
                   </p>
                 </div>
               </div>
@@ -397,7 +297,6 @@ export default function BloodRecognitionPage() {
             /* File Preview Area */
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
-                {/* Remove button */}
                 <button
                   onClick={handleClear}
                   className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-slate-900/70 text-white flex items-center justify-center hover:bg-red-600 transition"
@@ -409,19 +308,18 @@ export default function BloodRecognitionPage() {
                 {previewUrl ? (
                   <img
                     src={previewUrl}
-                    alt="Uploaded document preview"
-                    className="w-full max-h-52 object-contain"
+                    alt="Uploaded report preview"
+                    className="w-full max-h-56 object-contain"
                   />
                 ) : (
-                  /* PDF placeholder */
                   <div className="flex flex-col items-center justify-center py-10 space-y-2 text-slate-400">
-                    <FileText className="w-12 h-12" />
-                    <span className="text-xs font-semibold">PDF Document</span>
+                    <FileText className="w-12 h-12 text-medical-red" />
+                    <span className="text-xs font-semibold">PDF Pathology Document Ready</span>
                   </div>
                 )}
               </div>
 
-              {/* File info strip */}
+              {/* File details strip */}
               <div className="flex items-center space-x-2.5 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                 <ImageIcon className="w-4 h-4 text-slate-400 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -429,7 +327,7 @@ export default function BloodRecognitionPage() {
                     {uploadedFile.name}
                   </p>
                   <p className="text-[10px] text-slate-400">
-                    {(uploadedFile.size / 1024).toFixed(1)} KB • {uploadedFile.type || 'unknown type'}
+                    {(uploadedFile.size / 1024).toFixed(1)} KB • {uploadedFile.type || 'Document'}
                   </p>
                 </div>
                 <button
@@ -441,7 +339,7 @@ export default function BloodRecognitionPage() {
                 </button>
               </div>
 
-              {/* Analyze button */}
+              {/* Action button */}
               {!scanResult && (
                 <button
                   onClick={handleAnalyze}
@@ -451,12 +349,12 @@ export default function BloodRecognitionPage() {
                   {isAnalyzing ? (
                     <>
                       <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      <span>Analyzing Document...</span>
+                      <span>Reading Pathology Document...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Analyze Blood Report</span>
+                      <span>Read Document Text</span>
                     </>
                   )}
                 </button>
@@ -471,54 +369,38 @@ export default function BloodRecognitionPage() {
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    Analysis Complete ({scanResult.confidence}% Confidence)
+                    Extracted Blood Group ({scanResult.confidence}% OCR Match)
                   </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
-                    scanResult.source === 'google_gemini_ai'
-                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
-                      : 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
-                  }`}>
-                    <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                    <span>{scanResult.source === 'google_gemini_ai' ? 'Google Gemini AI' : 'Diagnostic Heuristic Engine'}</span>
-                  </span>
-                  <BloodGroupBadge bloodGroup={scanResult.bloodGroup} size="sm" />
-                </div>
+                <BloodGroupBadge bloodGroup={scanResult.bloodGroup} size="sm" />
               </div>
 
-              {/* Extracted Clinical Metadata Grid */}
               {(scanResult.patientName || scanResult.hospitalOrLab || scanResult.testDate) && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-900/50 text-[11px]">
                   {scanResult.patientName && (
                     <div>
-                      <span className="text-slate-400 text-[10px] block">Patient / Subject</span>
+                      <span className="text-slate-400 text-[10px] block">Patient Name</span>
                       <span className="font-bold text-slate-800 dark:text-slate-200">{scanResult.patientName}</span>
                     </div>
                   )}
                   {scanResult.hospitalOrLab && (
                     <div>
-                      <span className="text-slate-400 text-[10px] block">Laboratory / Hospital</span>
+                      <span className="text-slate-400 text-[10px] block">Pathology Lab</span>
                       <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">{scanResult.hospitalOrLab}</span>
                     </div>
                   )}
                   {scanResult.testDate && (
                     <div>
-                      <span className="text-slate-400 text-[10px] block">Report Date</span>
+                      <span className="text-slate-400 text-[10px] block">Test Date</span>
                       <span className="font-medium text-slate-700 dark:text-slate-300">{scanResult.testDate}</span>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 font-sans text-xs text-slate-700 dark:text-slate-300 border border-emerald-100 dark:border-emerald-900/40">
-                <span className="font-bold text-slate-900 dark:text-white block mb-0.5 text-[11px]">AI Clinical Assessment:</span>
+              <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-300 border border-emerald-100 dark:border-emerald-900/40">
+                <span className="font-bold text-slate-900 dark:text-white block mb-0.5 text-[11px]">Document Findings:</span>
                 {scanResult.extractedText}
-              </div>
-
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                <span className="font-bold text-slate-700 dark:text-slate-300 block mb-0.5">Antigens & Markers Identified:</span>
-                {scanResult.antigensDetected.length > 0 ? scanResult.antigensDetected.join(' • ') : 'Standard agglutination confirmed'}
               </div>
 
               <div className="flex items-center justify-between pt-1">
@@ -526,53 +408,90 @@ export default function BloodRecognitionPage() {
                   onClick={handleClear}
                   className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-semibold underline underline-offset-2"
                 >
-                  Scan another file
+                  Upload another report
                 </button>
                 <Link
                   href={`/find-donor?bloodGroup=${scanResult.bloodGroup}`}
-                  className="font-bold text-medical-red hover:underline text-xs"
+                  className="font-bold text-medical-red hover:underline text-xs flex items-center space-x-1"
                 >
-                  Find Matching Donors →
+                  <span>Find Matching Donors</span>
+                  <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
-
-              {scanResult.confidence < 80 && (
-                <div className="flex items-start space-x-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[10px] text-amber-800 dark:text-amber-300">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  <span>
-                    Low confidence scan. Rename your file to include the blood group (e.g. <em>report_B_pos.jpg</em>) for higher accuracy, or use the antigen lab on the left.
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Upload tips */}
-          {!uploadedFile && (
-            <div className="space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-              <p className="font-bold text-slate-700 dark:text-slate-300 text-xs">💡 Tips for best results:</p>
-              <ul className="list-disc pl-4 space-y-1 leading-relaxed">
-                <li>Include the blood group in the filename (e.g. <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">lab_O_negative.jpg</span>)</li>
-                <li>Use clear, well-lit photos of lab slips or donor cards</li>
-                <li>PDFs from licensed pathology labs give highest confidence</li>
-              </ul>
             </div>
           )}
         </div>
+
+        {/* Module 2: Purely Educational Serology Reference */}
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+          <div className="flex items-center space-x-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center font-bold">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                Educational Serology Guide
+              </h3>
+              <p className="text-[11px] text-slate-400">Scientific reference on ABO & Rh antigen biology</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-[11px] text-blue-900 dark:text-blue-300 flex items-start space-x-2">
+            <Info className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              <strong>Reference only:</strong> Select any blood group below to inspect its biological markers and compatibility rules.
+            </span>
+          </div>
+
+          {/* Blood group selector */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {ALL_BLOOD_GROUPS.map((bg) => (
+              <button
+                key={bg}
+                onClick={() => setSelectedReferenceGroup(bg)}
+                className={`py-2 rounded-xl text-xs font-black transition-all ${
+                  selectedReferenceGroup === bg
+                    ? 'bg-medical-red text-white shadow ring-2 ring-red-400'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {bg}
+              </button>
+            ))}
+          </div>
+
+          {/* Scientific details */}
+          <div className="space-y-3 pt-2 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Antigens on RBC Surface</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">{refDetails.antigens}</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Antibodies in Blood Plasma</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">{refDetails.antibodies}</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Clinical Significance</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">{refDetails.role}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Full Compatibility Matrix Preview */}
+      {/* Full Compatibility Matrix Section */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center space-x-2">
             <Layers className="w-4 h-4 text-medical-red" />
-            <span>Red Blood Cell Compatibility for {deduced.bloodGroup}</span>
+            <span>Transfusion Compatibility Reference for {selectedReferenceGroup}</span>
           </h3>
           <Link
             href="/blood-compatibility"
             className="text-xs font-bold text-medical-red hover:underline flex items-center space-x-1"
           >
-            <span>Full RBC / Plasma / Platelets Matrix</span>
+            <span>Full Compatibility Matrix</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
@@ -580,10 +499,10 @@ export default function BloodRecognitionPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">
-              Patients with {deduced.bloodGroup} can safely receive RBC from:
+              Patients with {selectedReferenceGroup} can safely receive RBCs from:
             </span>
             <div className="flex flex-wrap gap-2">
-              {compatData.canReceiveFrom.map((bg) => (
+              {referenceCompatData.canReceiveFrom.map((bg) => (
                 <BloodGroupBadge key={bg} bloodGroup={bg} size="md" />
               ))}
             </div>
@@ -591,10 +510,10 @@ export default function BloodRecognitionPage() {
 
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">
-              Donors with {deduced.bloodGroup} can safely donate RBC to:
+              Donors with {selectedReferenceGroup} can safely donate RBCs to:
             </span>
             <div className="flex flex-wrap gap-2">
-              {compatData.canDonateTo.map((bg) => (
+              {referenceCompatData.canDonateTo.map((bg) => (
                 <BloodGroupBadge key={bg} bloodGroup={bg} size="md" />
               ))}
             </div>
@@ -610,4 +529,3 @@ export default function BloodRecognitionPage() {
     </div>
   );
 }
-

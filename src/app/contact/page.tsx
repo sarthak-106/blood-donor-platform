@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare, Hospital } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -10,6 +10,10 @@ export default function ContactPage() {
   const [subject, setSubject] = useState('Hospital Partner Integration');
   const [message, setMessage] = useState('');
   const [isSent, setIsSent] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Contact Support & Hospital Integration | BloodDonor Platform';
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

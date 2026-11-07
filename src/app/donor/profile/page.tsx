@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/db';
 import { Donor, BloodGroup } from '@/lib/types';
@@ -16,12 +17,15 @@ import {
   MapPin,
   FileText,
   Upload,
+  EyeOff,
+  Eye,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 
-
-
 export default function DonorProfileSettingsPage() {
-  const { currentDonor, refreshUserData } = useAuth();
+  const router = useRouter();
+  const { currentDonor, currentUser, logout, refreshUserData } = useAuth();
   const donor = currentDonor || db.getDonorById('donor-1');
 
   const [name, setName] = useState('');
@@ -33,6 +37,18 @@ export default function DonorProfileSettingsPage() {
   const [emergencyReady, setEmergencyReady] = useState(true);
   const [visibility, setVisibility] = useState<'Public' | 'Hospital_Only' | 'Private'>('Public');
   const [isSaved, setIsSaved] = useState(false);
+
+  // Hide My Profile Toggle
+  const isHidden = visibility === 'Private';
+  const handleToggleHideProfile = (hide: boolean) => {
+    setVisibility(hide ? 'Private' : 'Public');
+  };
+
+  // Delete Account Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Document upload state
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
@@ -82,7 +98,6 @@ export default function DonorProfileSettingsPage() {
     setIsUploadingDoc(true);
     setDocFileName(file.name);
 
-    // Read via FileReader to confirm it's accessible, then submit
     const reader = new FileReader();
     reader.onloadend = () => {
       db.submitVerificationDocument({
@@ -100,6 +115,33 @@ export default function DonorProfileSettingsPage() {
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmationText.trim().toLowerCase() !== 'delete') {
+      setDeleteError('Please type DELETE to confirm.');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch('/api/auth/account', {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      logout();
+      router.push('/?message=account_deleted');
+    } catch (err: any) {
+      setDeleteError(err.message || 'An error occurred while deleting your account.');
+      setIsDeleting(false);
+    }
   };
 
   if (!donor) {
@@ -159,10 +201,24 @@ export default function DonorProfileSettingsPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-medical-red"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-medical-red font-semibold"
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Blood Group
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={bloodGroup}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Metro City
@@ -172,30 +228,26 @@ export default function DonorProfileSettingsPage() {
                   required
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Mumbai / New Delhi / Bengaluru"
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-medical-red"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Neighbourhood / Area
+                  Locality / Area
                 </label>
                 <input
                   type="text"
                   required
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
-                  placeholder="e.g. Bandra, Koramangala, Saket, T. Nagar"
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-medical-red"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  PIN Code
+                  Postal PIN Code
                 </label>
                 <input
                   type="text"
@@ -216,7 +268,7 @@ export default function DonorProfileSettingsPage() {
                 rows={3}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="e.g. Voluntary blood donor from Mumbai. O- universal donor, available on weekends. Happy to help in emergencies across Maharashtra."
+                placeholder="e.g. Voluntary blood donor from Mumbai. O- universal donor, available on weekends. Happy to help in emergencies."
                 className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-medical-red"
               />
             </div>
@@ -231,16 +283,43 @@ export default function DonorProfileSettingsPage() {
             onChange={handleFileSelected}
           />
 
-          {/* Privacy & Emergency Settings */}
+          {/* Privacy & Visibility Settings */}
           <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-              Privacy & Emergency Settings
+              Privacy & Discovery Settings
             </h3>
+
+            {/* "Hide My Profile" Dedicated Toggle */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <div className="flex items-center space-x-2">
+                  {isHidden ? <EyeOff className="w-4 h-4 text-medical-red" /> : <Eye className="w-4 h-4 text-emerald-600" />}
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                    Hide My Profile from Public Searches
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {isHidden
+                    ? 'Your profile is currently hidden and will not appear in the public donor directory or search results.'
+                    : 'Your profile is currently public and eligible to match with patient blood requests.'}
+                </p>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={isHidden}
+                  onChange={(e) => handleToggleHideProfile(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-medical-red"></div>
+              </label>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Profile Public Visibility
+                  Audience Scope
                 </label>
                 <select
                   value={visibility}
@@ -249,7 +328,7 @@ export default function DonorProfileSettingsPage() {
                 >
                   <option value="Public">Public (Searchable by Patients & Hospitals)</option>
                   <option value="Hospital_Only">Hospital Only (Authorized Medical Coordinators)</option>
-                  <option value="Private">Private (Do not list in directory)</option>
+                  <option value="Private">Private (Hidden from Directory)</option>
                 </select>
               </div>
 
@@ -277,7 +356,7 @@ export default function DonorProfileSettingsPage() {
                   Blood Test & Identity Verification
                 </h4>
                 <p className="text-[11px] text-slate-500">
-                  Upload NABL-accredited lab reports or Aadhaar-linked government ID to maintain Verified Gold status.
+                  Upload NABL-accredited lab reports or government ID to maintain Verified status.
                 </p>
               </div>
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
@@ -289,7 +368,7 @@ export default function DonorProfileSettingsPage() {
               <div className="p-3 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>
-                  <span className="font-bold">{docFileName}</span> submitted for verification. Under administrative review.
+                  <span className="font-bold">{docFileName}</span> submitted for verification.
                 </span>
               </div>
             ) : (
@@ -314,7 +393,89 @@ export default function DonorProfileSettingsPage() {
             </button>
           </div>
         </form>
+
+        {/* DANGER ZONE: DELETE ACCOUNT */}
+        <div className="pt-6 border-t border-red-100 dark:border-red-950/60 space-y-3">
+          <div className="p-5 rounded-2xl bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider flex items-center space-x-1.5">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Danger Zone: Delete Account</span>
+              </h4>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 max-w-lg leading-relaxed">
+                Permanently delete your user profile, registered donor credentials, and associated data from the platform. This action cannot be reversed.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteConfirmationText('');
+                setIsDeleteModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition flex items-center justify-center space-x-1.5 shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Account</span>
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-medical-red flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Delete Account & Donor Profile?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                This will permanently delete your donor account, achievements, and availability history. This action is irreversible.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Type <span className="font-bold text-red-600">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-red-300 dark:border-red-900 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              {deleteError && (
+                <p className="text-[11px] font-semibold text-red-500">{deleteError}</p>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || deleteConfirmationText.trim().toLowerCase() !== 'delete'}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-bold shadow-md transition flex items-center justify-center space-x-1.5"
+              >
+                {isDeleting ? 'Deleting…' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

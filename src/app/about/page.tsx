@@ -1,7 +1,13 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Droplet, Shield, Heart, Award, Users, CheckCircle2 } from 'lucide-react';
 import { MEDICAL_SAFETY_DISCLAIMER } from '@/lib/compatibility';
+
+export const metadata: Metadata = {
+  title: 'About Our Mission',
+  description: 'Learn about the humanitarian mission and clinical verification standards powering BloodDonor Platform.',
+};
 
 export default function AboutPage() {
   return (

@@ -5,18 +5,49 @@ import { hashPassword } from '@/lib/authCrypto';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { verifyCaptcha } from '@/lib/captcha';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req.headers);
+    const rateCheck = checkRateLimit(`register_${ip}`, 5, 10 * 60 * 1000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many registration attempts. Please wait ${rateCheck.resetSeconds} seconds before trying again.`,
+        },
+        { status: 429 }
+      );
+    }
+
     const formData = await req.formData();
+
+    const captchaToken = formData.get('captcha_token') as string | null;
+    const captchaAnswer = formData.get('captcha_answer') as string | null;
+    if (captchaToken || captchaAnswer) {
+      const captchaRes = verifyCaptcha(captchaToken, captchaAnswer);
+      if (!captchaRes.valid) {
+        return NextResponse.json({ success: false, error: captchaRes.error || 'CAPTCHA verification failed.' }, { status: 400 });
+      }
+    }
 
     const role = formData.get('role') as string;
     const name = (formData.get('name') as string)?.trim();
     const phone = (formData.get('phone') as string)?.replace(/\s+/g, '').trim();
     const email = (formData.get('email') as string)?.toLowerCase().trim() || null;
     const password = (formData.get('password') as string) || null;
+    const consent = formData.get('consent');
+
+    if (role === 'donor' && !consent) {
+      return NextResponse.json(
+        { success: false, error: 'You must confirm that the information provided is accurate and agree to the privacy policy.' },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     if (!role || !name || !phone) {

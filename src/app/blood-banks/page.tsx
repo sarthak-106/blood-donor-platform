@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BloodBank, BloodGroup } from '@/lib/types';
 import { ALL_BLOOD_GROUPS } from '@/lib/compatibility';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
@@ -21,6 +21,10 @@ export default function BloodBanksPage() {
   const [selectedCity, setSelectedCity] = useState<string>('All Cities');
   const [is24x7Only, setIs24x7Only] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    document.title = 'Blood Banks & 24x7 Storage Units Directory | BloodDonor Platform';
+  }, []);
 
   const allBanks = db.getBloodBanks();
 
