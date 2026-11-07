@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
       captchaToken,
       captchaAnswer,
       otp_verified,
+      prescription_file_name,
+      prescription_file_url,
     } = body;
 
     // 1. Validation of common fields
@@ -106,6 +108,18 @@ export async function POST(request: NextRequest) {
     if (!/^\+\d{10,15}$/.test(phone)) {
       return NextResponse.json(
         { success: false, error: 'Valid requester phone number with country code is required.' },
+        { status: 400 }
+      );
+    }
+
+    // 1b. Prescription / Requisition document is mandatory
+    if (!prescription_file_name && !prescription_file_url) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Hospital Requisition or Doctor Prescription document is required. Please upload it before submitting.',
+        },
         { status: 400 }
       );
     }

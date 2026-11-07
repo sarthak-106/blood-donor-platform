@@ -420,10 +420,10 @@ export default function CreateRequestPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center space-x-1.5">
                   <FileText className="w-4 h-4 text-medical-red" />
-                  <span>4. Doctor's Prescription / Hospital Requisition Form</span>
+                  <span>4. Doctor's Prescription / Hospital Requisition Form <span className="text-medical-red">*</span></span>
                 </h3>
-                <span className="text-[11px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-semibold">
-                  Optional • Boosts Donor Verification
+                <span className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 px-2 py-0.5 rounded-full font-semibold">
+                  Required
                 </span>
               </div>
 
@@ -468,6 +468,9 @@ export default function CreateRequestPage() {
                       </p>
                       <p className="text-[10px] text-slate-400 pt-1">
                         Supports JPG, PNG, WEBP, PDF (Doctor slips, pathology requisitions, hospital stamp slips)
+                      </p>
+                      <p className="text-[10px] text-red-500 dark:text-red-400 font-semibold pt-0.5">
+                        ⚠ This document is mandatory and must be uploaded before submitting.
                       </p>
                     </div>
                   </div>
