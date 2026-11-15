@@ -25,6 +25,7 @@ import {
   X,
   Building2,
   Lock,
+  Share2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -45,6 +46,9 @@ export default function EmergencySOSPage() {
   const [broadcastDone, setBroadcastDone] = useState(false);
   const [createdRequestId, setCreatedRequestId] = useState<string>('');
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // WhatsApp share message (built after broadcast succeeds)
+  const [whatsappShareUrl, setWhatsappShareUrl] = useState<string>('');
 
   // Phone OTP Verification State (Mandatory for SOS to prevent abuse)
   const [isOtpSent, setIsOtpSent] = useState(false);
@@ -247,6 +251,12 @@ export default function EmergencySOSPage() {
       setIsBroadcasting(false);
       setBroadcastDone(true);
 
+      // Build WhatsApp share URL
+      const waMsg = encodeURIComponent(
+        `🚨 *URGENT BLOOD NEEDED* 🚨\n\nPatient: *${patientName}*\nBlood Group: *${bloodGroup}* (${quantity} unit(s))\nHospital: *${hospital}*, ${city}\nContact: ${contactPhone}\n\nPlease help or share this message. Every second counts! 🙏\n\nFind donors: ${typeof window !== 'undefined' ? window.location.origin : 'https://lifelink.vercel.app'}/find-donor`
+      );
+      setWhatsappShareUrl(`https://wa.me/?text=${waMsg}`);
+
       confetti({
         particleCount: 120,
         spread: 80,
@@ -346,6 +356,24 @@ export default function EmergencySOSPage() {
                   Return to Dashboard
                 </Link>
               </div>
+
+              {/* WhatsApp Share */}
+              {whatsappShareUrl && (
+                <div className="pt-3">
+                  <a
+                    href={whatsappShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold text-xs shadow-lg transition"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Share SOS on WhatsApp — Spread the Alert!</span>
+                  </a>
+                  <p className="text-[10px] text-red-300/70 text-center mt-1">
+                    Share with family, friends & local groups to find donors faster
+                  </p>
+                </div>
+              )}
 
               {/* Immediate National Blood Helpline & Blood Bank fallback */}
               <div className="pt-4 mt-4 border-t border-red-900/60 max-w-lg mx-auto space-y-2">

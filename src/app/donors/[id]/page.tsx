@@ -29,6 +29,7 @@ import {
   Mail,
   MessageSquare,
   ShieldAlert,
+  Printer,
 } from 'lucide-react';
 import {
   formatDate,
@@ -290,6 +291,14 @@ export default function DonorProfilePage({ params }: { params: Promise<{ id: str
                     Copied!
                   </span>
                 )}
+              </button>
+
+              <button
+                onClick={() => typeof window !== 'undefined' && window.print()}
+                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
+                title="Print or Save Profile PDF"
+              >
+                <Printer className="w-4 h-4" />
               </button>
             </div>
           </div>

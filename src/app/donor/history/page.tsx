@@ -15,6 +15,8 @@ import {
   FileCheck,
   Download,
   X,
+  Printer,
+  Share2,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import confetti from 'canvas-confetti';
@@ -298,9 +300,31 @@ export default function DonorHistoryPage() {
               Certificate Ledger ID: {selectedCert.certificate_url}
             </div>
 
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => typeof window !== 'undefined' && window.print()}
+                className="flex-1 py-2.5 rounded-xl bg-medical-red hover:bg-red-700 text-white font-bold text-xs shadow transition flex items-center justify-center space-x-1.5"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print / Save PDF</span>
+              </button>
+
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  `Proud to share my Official Blood Donation Certificate! 🎉\n\nI donated ${selectedCert.units_donated} Unit (${selectedCert.donation_type}) at ${selectedCert.hospital_or_blood_bank}.\nEvery donation saves lives! Register as a donor today on LifeLink.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold text-xs shadow transition flex items-center justify-center space-x-1.5"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share Certificate</span>
+              </a>
+            </div>
+
             <button
               onClick={() => setSelectedCert(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition"
+              className="w-full py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition"
             >
               Close Certificate
             </button>

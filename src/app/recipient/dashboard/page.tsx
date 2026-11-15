@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   ChevronRight,
   Trash2,
+  CheckCheck,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { formatDate, getUrgencyBadgeStyle, getStatusBadgeStyle } from '@/lib/utils';
@@ -34,6 +35,16 @@ export default function RecipientDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [fulfillingId, setFulfillingId] = useState<string | null>(null);
+
+  const handleMarkFulfilled = (requestId: string) => {
+    setFulfillingId(requestId);
+    setTimeout(() => {
+      db.updateBloodRequestStatus(requestId, 'Fulfilled');
+      refreshData();
+      setFulfillingId(null);
+    }, 600);
+  };
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmationText.trim().toLowerCase() !== 'delete') {
@@ -244,6 +255,18 @@ export default function RecipientDashboard() {
                         {req.matched_donors_count || 0} compatible alerted
                       </span>
                     </div>
+
+                    {req.status !== 'Fulfilled' && req.status !== 'Cancelled' && (
+                      <button
+                        onClick={() => handleMarkFulfilled(req.id)}
+                        disabled={fulfillingId === req.id}
+                        title="Mark this request as fulfilled"
+                        className="px-3 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition flex items-center space-x-1 disabled:opacity-50"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>{fulfillingId === req.id ? 'Saving…' : 'Fulfilled'}</span>
+                      </button>
+                    )}
 
                     <Link
                       href={`/recipient/requests/${req.id}`}

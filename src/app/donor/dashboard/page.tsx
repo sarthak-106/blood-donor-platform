@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
+  BellOff,
 } from 'lucide-react';
 import {
   formatDate,
@@ -33,6 +34,8 @@ export default function DonorDashboard() {
   const [donor, setDonor] = useState<Donor | null>(null);
   const [incomingRequests, setIncomingRequests] = useState<BloodRequest[]>([]);
   const [selectedAvailability, setSelectedAvailability] = useState<DonorAvailability>('Available');
+  const [snoozeUntil, setSnoozeUntil] = useState<string>('');
+  const [showSnoozeInput, setShowSnoozeInput] = useState(false);
 
   const refreshDashboard = () => {
     // If logged in as donor, use current donor, else fallback to demo donor-1 (David Chen)
@@ -64,9 +67,22 @@ export default function DonorDashboard() {
   const history = db.getDonationHistoryByDonor(donor.id);
 
   const handleAvailabilityChange = (newStatus: DonorAvailability) => {
+    if (newStatus === 'Temporarily Unavailable') {
+      setShowSnoozeInput(true);
+      return;
+    }
+    setShowSnoozeInput(false);
+    setSnoozeUntil('');
     setSelectedAvailability(newStatus);
     db.updateDonorAvailability(donor.id, newStatus);
     refreshUserData();
+  };
+
+  const handleConfirmSnooze = () => {
+    setSelectedAvailability('Temporarily Unavailable');
+    db.updateDonorAvailability(donor.id, 'Temporarily Unavailable');
+    refreshUserData();
+    setShowSnoozeInput(false);
   };
 
   const handleAcceptRequest = (requestId: string) => {
@@ -115,6 +131,7 @@ export default function DonorDashboard() {
                 {donor.area}, {donor.city} • Registered Donor ID: <span className="font-mono">{donor.id}</span>
               </p>
             </div>
+
           </div>
 
           {/* Availability Status Switcher */}
@@ -151,6 +168,42 @@ export default function DonorDashboard() {
                 );
               })}
             </div>
+
+            {/* Snooze picker — shown when "Temporarily Unavailable" is clicked */}
+            {showSnoozeInput && (
+              <div className="mt-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-2">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 flex items-center space-x-1">
+                  <BellOff className="w-3.5 h-3.5" />
+                  <span>When will you be available again?</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={snoozeUntil}
+                    onChange={(e) => setSnoozeUntil(e.target.value)}
+                    className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleConfirmSnooze}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition"
+                  >
+                    Confirm Snooze
+                  </button>
+                  <button
+                    onClick={() => setShowSnoozeInput(false)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white font-bold text-xs transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {snoozeUntil && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                    You will be snoozed until {new Date(snoozeUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}. Donors won't be matched to you during this period.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
