@@ -51,6 +51,9 @@ export const Footer: React.FC = () => {
                 <Link href="/blood-banks" className="hover:text-white transition">Blood Banks Directory</Link>
               </li>
               <li>
+                <Link href="/community" className="hover:text-white transition text-amber-400 font-semibold">Community & Thank You Wall</Link>
+              </li>
+              <li>
                 <Link href="/recipient/emergency-sos" className="text-medical-red hover:underline font-semibold">Emergency SOS</Link>
               </li>
             </ul>

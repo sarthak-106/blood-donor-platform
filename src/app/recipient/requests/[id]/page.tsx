@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BloodRequest, Donor, DonorRequest, RequestStatus } from '@/lib/types';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
+import { AnonymousChatBox } from '@/components/chat/AnonymousChatBox';
 import { db } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -323,6 +324,13 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
           </a>
         </div>
       </div>
+
+      {/* Anonymous Coordination Chat Box */}
+      <AnonymousChatBox
+        requestId={request.id}
+        patientName={request.patient_name}
+        hospitalName={request.hospital}
+      />
     </div>
   );
 }

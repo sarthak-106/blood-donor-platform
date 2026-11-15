@@ -67,6 +67,13 @@ export interface Donor {
   updated_at: string;
 }
 
+export type BloodComponent =
+  | 'Whole Blood'
+  | 'Platelets (PRP/SDP)'
+  | 'Plasma (FFP)'
+  | 'Packed Red Cells (PRBC)'
+  | 'Cryoprecipitate';
+
 export interface BloodRequest {
   id: string;
   requester_id: string;
@@ -77,6 +84,7 @@ export interface BloodRequest {
   patient_age?: number;
   patient_gender?: string;
   blood_group: BloodGroup;
+  component?: BloodComponent;
   hospital: string;
   hospital_address?: string;
   city: string;
@@ -212,5 +220,29 @@ export interface AuditLog {
   entity_type: 'donor' | 'blood_request' | 'verification' | 'user' | 'system' | 'blood_bank';
   entity_id: string;
   metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  request_id: string;
+  sender_id: string;
+  sender_role: 'donor' | 'recipient';
+  sender_alias: string;
+  message: string;
+  created_at: string;
+}
+
+export interface GratitudePost {
+  id: string;
+  author_name: string;
+  recipient_city: string;
+  patient_story: string;
+  donor_alias?: string;
+  blood_group: BloodGroup;
+  component?: BloodComponent;
+  units_received: number;
+  likes: number;
+  hospital: string;
   created_at: string;
 }

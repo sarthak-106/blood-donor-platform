@@ -8,6 +8,7 @@ import { ALL_BLOOD_GROUPS, RBC_COMPATIBILITY } from '@/lib/compatibility';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
 import { DonorCard } from '@/components/donors/DonorCard';
 import { db } from '@/lib/db';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   Search,
   Zap,
@@ -28,6 +29,7 @@ import {
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<BloodGroup | ''>('');
   const [selectedCity, setSelectedCity] = useState('New Delhi');
   const [includeCompatible, setIncludeCompatible] = useState(true);
@@ -151,7 +153,7 @@ export default function HomePage() {
                     className="w-full h-12 rounded-xl bg-medical-red hover:bg-red-700 text-white font-bold text-sm shadow-md shadow-red-500/25 transition-all duration-200 flex items-center justify-center space-x-2 hover:scale-[1.02]"
                   >
                     <Search className="w-4 h-4" />
-                    <span>Find Donors</span>
+                    <span>{t('searchDonors')}</span>
                   </button>
                 </div>
               </div>

@@ -15,6 +15,8 @@ import {
   DonorAvailability,
   VerificationStatus,
   RequestStatus,
+  ChatMessage,
+  GratitudePost,
 } from './types';
 import {
   SEED_USERS,
@@ -43,7 +45,54 @@ interface DBState {
   donorAchievements: DonorAchievement[];
   donationHistory: DonationHistory[];
   auditLogs: AuditLog[];
+  chatMessages: ChatMessage[];
+  gratitudePosts: GratitudePost[];
 }
+
+const DEFAULT_GRATITUDE_POSTS: GratitudePost[] = [
+  {
+    id: 'grat-1',
+    author_name: 'Ananya S.',
+    recipient_city: 'New Delhi',
+    hospital: 'AIIMS New Delhi',
+    blood_group: 'B+',
+    component: 'Platelets (PRP/SDP)',
+    units_received: 2,
+    donor_alias: 'LifeSaver Rahul',
+    patient_story:
+      'My 8-year-old nephew was admitted for severe dengue with rapidly dropping platelet counts. Within 40 minutes of our SOS request, two voluntary donors responded and reached the blood bank. Eternal gratitude to this community!',
+    likes: 42,
+    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+  },
+  {
+    id: 'grat-2',
+    author_name: 'Vikram K.',
+    recipient_city: 'Mumbai',
+    hospital: 'Tata Memorial Hospital',
+    blood_group: 'O-',
+    component: 'Packed Red Cells (PRBC)',
+    units_received: 3,
+    donor_alias: 'Hero Donor Sneha',
+    patient_story:
+      'Finding rare O- negative blood during urgent emergency cancer surgery felt impossible. A verified donor coordinated with our hospital intake in under an hour. You gave my mother a second life.',
+    likes: 67,
+    created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
+  },
+  {
+    id: 'grat-3',
+    author_name: 'Pooja Deshmukh',
+    recipient_city: 'Pune',
+    hospital: 'Ruby Hall Clinic',
+    blood_group: 'A+',
+    component: 'Plasma (FFP)',
+    units_received: 2,
+    donor_alias: 'Donor Amit V.',
+    patient_story:
+      'Safe, anonymous coordination allowed us to focus completely on my father’s bypass surgery without the stress of blood shortages. Immense respect for selfless blood donors.',
+    likes: 35,
+    created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
+  },
+];
 
 const STORAGE_KEY = 'blood_donor_platform_db_v2';
 
@@ -57,9 +106,12 @@ class DatabaseEngine {
   private loadInitialState(): DBState {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          return JSON.parse(saved);
+        const savedStr = localStorage.getItem(STORAGE_KEY);
+        if (savedStr) {
+          const saved = JSON.parse(savedStr);
+          saved.chatMessages = saved.chatMessages || [];
+          saved.gratitudePosts = saved.gratitudePosts || [...DEFAULT_GRATITUDE_POSTS];
+          return saved;
         }
       } catch (e) {
         console.error('Failed to load DB state from localStorage', e);
@@ -78,6 +130,8 @@ class DatabaseEngine {
       donorAchievements: [],
       donationHistory: [],
       auditLogs: [],
+      chatMessages: [],
+      gratitudePosts: [...DEFAULT_GRATITUDE_POSTS],
     };
   }
 
@@ -697,6 +751,85 @@ class DatabaseEngine {
     if (this.state.auditLogs.length > 200) {
       this.state.auditLogs.pop();
     }
+  }
+
+  // --- Anonymous Chat ---
+  getChatMessages(requestId: string): ChatMessage[] {
+    return (this.state.chatMessages || [])
+      .filter((m) => m.request_id === requestId)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }
+
+  addChatMessage(msg: Partial<ChatMessage>): ChatMessage {
+    const newMsg: ChatMessage = {
+      id: `chat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      request_id: msg.request_id || '',
+      sender_id: msg.sender_id || 'anonymous',
+      sender_role: msg.sender_role || 'recipient',
+      sender_alias: msg.sender_alias || (msg.sender_role === 'donor' ? 'Anonymous Donor' : 'Requester'),
+      message: msg.message || '',
+      created_at: new Date().toISOString(),
+    };
+    if (!this.state.chatMessages) this.state.chatMessages = [];
+    this.state.chatMessages.push(newMsg);
+    this.persist();
+    return newMsg;
+  }
+
+  // --- Gratitude Wall & Leaderboards ---
+  getGratitudePosts(): GratitudePost[] {
+    return [...(this.state.gratitudePosts || DEFAULT_GRATITUDE_POSTS)].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }
+
+  addGratitudePost(post: Partial<GratitudePost>): GratitudePost {
+    const newPost: GratitudePost = {
+      id: `grat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      author_name: post.author_name || 'Anonymous Grateful Family',
+      recipient_city: post.recipient_city || 'India',
+      hospital: post.hospital || 'Hospital Care Center',
+      blood_group: post.blood_group || 'O+',
+      component: post.component || 'Whole Blood',
+      units_received: post.units_received || 1,
+      donor_alias: post.donor_alias || 'Selfless Volunteer Donor',
+      patient_story: post.patient_story || 'Words cannot express our thanks for saving our loved one in an emergency.',
+      likes: 1,
+      created_at: new Date().toISOString(),
+    };
+    if (!this.state.gratitudePosts) this.state.gratitudePosts = [];
+    this.state.gratitudePosts.unshift(newPost);
+    this.persist();
+    return newPost;
+  }
+
+  likeGratitudePost(id: string): void {
+    const post = (this.state.gratitudePosts || []).find((p) => p.id === id);
+    if (post) {
+      post.likes = (post.likes || 0) + 1;
+      this.persist();
+    }
+  }
+
+  getCityLeaderboard(): { city: string; totalDonors: number; totalDonations: number; livesSaved: number }[] {
+    const cityMap: Record<string, { totalDonors: number; totalDonations: number }> = {};
+    for (const d of this.state.donors) {
+      const city = d.city || 'Other';
+      if (!cityMap[city]) {
+        cityMap[city] = { totalDonors: 0, totalDonations: 0 };
+      }
+      cityMap[city].totalDonors += 1;
+      cityMap[city].totalDonations += d.total_donations || 0;
+    }
+
+    return Object.entries(cityMap)
+      .map(([city, data]) => ({
+        city,
+        totalDonors: data.totalDonors,
+        totalDonations: data.totalDonations,
+        livesSaved: data.totalDonations * 3,
+      }))
+      .sort((a, b) => b.totalDonations - a.totalDonations);
   }
 
   // --- Reset to initial state ---

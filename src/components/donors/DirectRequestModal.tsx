@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Donor, BloodGroup, UrgencyLevel } from '@/lib/types';
+import { Donor, BloodGroup, UrgencyLevel, BloodComponent } from '@/lib/types';
 import { db } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -42,6 +42,7 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>(
     donor ? donor.blood_group : defaultBloodGroup || 'O+'
   );
+  const [component, setComponent] = useState<BloodComponent>('Whole Blood');
   const [hospital, setHospital] = useState('AIIMS New Delhi');
   const [hospitalAddress, setHospitalAddress] = useState('Sri Aurobindo Marg, Ansari Nagar, New Delhi 110029');
   const [city, setCity] = useState(donor ? donor.city : 'New Delhi');
@@ -128,6 +129,7 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
         requester_phone: contactNumber,
         patient_name: patientName,
         blood_group: bloodGroup,
+        component,
         hospital,
         hospital_address: hospitalAddress,
         city,
@@ -229,8 +231,8 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
             )}
 
             {/* Patient Name & Blood Group */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-6">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Patient Full Name *
                 </label>
@@ -244,7 +246,7 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
                 />
               </div>
 
-              <div>
+              <div className="sm:col-span-3">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Blood Group *
                 </label>
@@ -258,6 +260,23 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
                       {bg}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Component *
+                </label>
+                <select
+                  value={component}
+                  onChange={(e) => setComponent(e.target.value as BloodComponent)}
+                  className="w-full px-2 py-2 text-[11px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold focus:ring-2 focus:ring-medical-red focus:outline-none"
+                >
+                  <option value="Whole Blood">Whole Blood</option>
+                  <option value="Platelets (PRP/SDP)">Platelets</option>
+                  <option value="Plasma (FFP)">Plasma (FFP)</option>
+                  <option value="Packed Red Cells (PRBC)">PRBC Cells</option>
+                  <option value="Cryoprecipitate">Cryo</option>
                 </select>
               </div>
             </div>

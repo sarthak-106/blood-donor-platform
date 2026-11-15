@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BloodGroup } from '@/lib/types';
+import { BloodGroup, BloodComponent } from '@/lib/types';
 import { ALL_BLOOD_GROUPS, getCompatibleDonorGroups } from '@/lib/compatibility';
 import { db } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
@@ -37,6 +37,7 @@ export default function EmergencySOSPage() {
   // Clear unverified mock defaults — use real clean user state
   const [patientName, setPatientName] = useState('');
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>('B+');
+  const [component, setComponent] = useState<BloodComponent>('Whole Blood');
   const [hospital, setHospital] = useState('');
   const [city, setCity] = useState('New Delhi');
   const [quantity, setQuantity] = useState(2);
@@ -221,6 +222,7 @@ export default function EmergencySOSPage() {
           requester_phone: cleanedPhone,
           patient_name: patientName,
           blood_group: bloodGroup,
+          component,
           hospital,
           city,
           quantity_units: Number(quantity),
@@ -439,6 +441,40 @@ export default function EmergencySOSPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Blood Component Selector */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-red-300 mb-1.5">
+                  Required Component / Blood Product *
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {(
+                    [
+                      'Whole Blood',
+                      'Platelets (PRP/SDP)',
+                      'Plasma (FFP)',
+                      'Packed Red Cells (PRBC)',
+                      'Cryoprecipitate',
+                    ] as BloodComponent[]
+                  ).map((comp) => {
+                    const isSelected = component === comp;
+                    return (
+                      <button
+                        type="button"
+                        key={comp}
+                        onClick={() => setComponent(comp)}
+                        className={`px-3 py-2 rounded-xl text-left text-xs transition border ${
+                          isSelected
+                            ? 'bg-red-600 text-white border-red-500 font-bold shadow-md shadow-red-600/40'
+                            : 'bg-slate-900/90 text-red-200 border-red-900/60 hover:border-red-700'
+                        }`}
+                      >
+                        <span className="block truncate">{comp}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

@@ -28,13 +28,16 @@ import {
   LogOut,
   PlusCircle,
   Zap,
+  Globe,
 } from 'lucide-react';
+import { useLanguage, LANGUAGE_OPTIONS } from '@/context/LanguageContext';
 import { formatTimeAgo } from '@/lib/utils';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { currentUser, currentDonor, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -109,7 +112,7 @@ export const Navbar: React.FC = () => {
               >
                 <div className="flex items-center space-x-1.5">
                   <Search className="w-4 h-4" />
-                  <span>Find Donors</span>
+                  <span>{t('findDonors')}</span>
                 </div>
               </Link>
 
@@ -123,7 +126,7 @@ export const Navbar: React.FC = () => {
               >
                 <div className="flex items-center space-x-1.5">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>Blood Group Guide</span>
+                  <span>{t('bloodGroupGuide')}</span>
                 </div>
               </Link>
 
@@ -137,7 +140,7 @@ export const Navbar: React.FC = () => {
               >
                 <div className="flex items-center space-x-1.5">
                   <Layers className="w-4 h-4" />
-                  <span>Compatibility Matrix</span>
+                  <span>{t('compatibilityMatrix')}</span>
                 </div>
               </Link>
 
@@ -151,7 +154,21 @@ export const Navbar: React.FC = () => {
               >
                 <div className="flex items-center space-x-1.5">
                   <Building2 className="w-4 h-4" />
-                  <span>Blood Banks</span>
+                  <span>{t('bloodBanks')}</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/community"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive('/community')
+                    ? 'text-medical-red bg-red-50 dark:bg-red-950/40 font-semibold'
+                    : 'text-slate-700 dark:text-slate-200 hover:text-medical-red hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center space-x-1.5">
+                  <Heart className="w-4 h-4 text-medical-red fill-current" />
+                  <span>{t('community')}</span>
                 </div>
               </Link>
 
@@ -346,6 +363,24 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
 
+              {/* Language Selector Dropdown */}
+              <div className="relative">
+                <select
+                  value={language}
+                  aria-label="Select Language"
+                  onChange={(e) => setLanguage(e.target.value as any)}
+                  className="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold pl-7 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-medical-red cursor-pointer"
+                  title="Change Language / भाषा बदलें"
+                >
+                  {LANGUAGE_OPTIONS.map((opt) => (
+                    <option key={opt.code} value={opt.code}>
+                      {opt.nativeLabel}
+                    </option>
+                  ))}
+                </select>
+                <Globe className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2.5 pointer-events-none" />
+              </div>
+
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
@@ -402,7 +437,16 @@ export const Navbar: React.FC = () => {
               className="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <Building2 className="w-4 h-4 text-medical-red" />
-              <span>Blood Banks Directory</span>
+              <span>{t('bloodBanks')}</span>
+            </Link>
+
+            <Link
+              href="/community"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <Heart className="w-4 h-4 text-medical-red fill-current" />
+              <span>{t('community')}</span>
             </Link>
 
             <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">

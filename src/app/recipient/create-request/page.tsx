@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BloodGroup, UrgencyLevel } from '@/lib/types';
+import { BloodGroup, UrgencyLevel, BloodComponent } from '@/lib/types';
 import { ALL_BLOOD_GROUPS, getCompatibleDonorGroups } from '@/lib/compatibility';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
 import { db } from '@/lib/db';
@@ -35,6 +35,7 @@ export default function CreateRequestPage() {
   const [patientAge, setPatientAge] = useState<number | ''>(8);
   const [patientGender, setPatientGender] = useState('Male');
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>('B+');
+  const [component, setComponent] = useState<BloodComponent>('Whole Blood');
   const [hospital, setHospital] = useState('AIIMS New Delhi');
   const [hospitalAddress, setHospitalAddress] = useState('Sri Aurobindo Marg, Ansari Nagar, New Delhi 110029');
   const [city, setCity] = useState('New Delhi');
@@ -128,6 +129,7 @@ export default function CreateRequestPage() {
         patient_age: patientAge ? Number(patientAge) : undefined,
         patient_gender: patientGender,
         blood_group: bloodGroup,
+        component,
         hospital,
         hospital_address: hospitalAddress,
         city,
@@ -283,6 +285,43 @@ export default function CreateRequestPage() {
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
                   Compatible donor types for {bloodGroup}: <span className="font-bold text-slate-800 dark:text-slate-200">{compatibleTypes.join(', ')}</span>
                 </p>
+              </div>
+
+              {/* Component-Specific Request Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Required Blood Component / Product *
+                  </label>
+                  <span className="text-[10px] text-slate-400">Cancer, dengue, trauma specialized</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {(
+                    [
+                      'Whole Blood',
+                      'Platelets (PRP/SDP)',
+                      'Plasma (FFP)',
+                      'Packed Red Cells (PRBC)',
+                      'Cryoprecipitate',
+                    ] as BloodComponent[]
+                  ).map((comp) => {
+                    const isSelected = component === comp;
+                    return (
+                      <button
+                        type="button"
+                        key={comp}
+                        onClick={() => setComponent(comp)}
+                        className={`p-2.5 rounded-xl text-left border text-xs transition ${
+                          isSelected
+                            ? 'border-medical-red bg-red-50 dark:bg-red-950/40 text-medical-red font-bold ring-2 ring-red-500/20'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        <span className="block truncate">{comp}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

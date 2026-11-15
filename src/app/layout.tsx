@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 
@@ -25,13 +26,15 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col bg-surface-light-secondary dark:bg-surface-dark text-slate-900 dark:text-slate-100 antialiased selection:bg-red-500 selection:text-white transition-colors duration-200">
         <ThemeProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <Navbar />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </NotificationProvider>
-          </AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <NotificationProvider>
+                <Navbar />
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </NotificationProvider>
+            </AuthProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

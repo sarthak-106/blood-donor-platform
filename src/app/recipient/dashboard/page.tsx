@@ -222,6 +222,11 @@ export default function RecipientDashboard() {
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusStyle.bg}`}>
                         {req.status}
                       </span>
+                      {req.component && req.component !== 'Whole Blood' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          {req.component}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
