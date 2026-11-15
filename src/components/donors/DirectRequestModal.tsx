@@ -116,6 +116,10 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
       setError('Please provide a contact phone number.');
       return;
     }
+    if (!prescriptionFile) {
+      setError('Hospital Requisition or Doctor Prescription document is required. Please upload it before submitting.');
+      return;
+    }
 
     try {
       const createdRequest = db.createBloodRequest({
@@ -383,9 +387,14 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
 
             {/* Hospital Requisition / Prescription Document Dropzone */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Hospital Requisition / Doctor Prescription (Optional)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Hospital Requisition / Doctor Prescription <span className="text-medical-red">*</span>
+                </label>
+                <span className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 px-2 py-0.5 rounded-full font-semibold">
+                  Required
+                </span>
+              </div>
               
               {!prescriptionFile ? (
                 <div
@@ -421,6 +430,9 @@ export const DirectRequestModal: React.FC<DirectRequestModalProps> = ({
                       </p>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">
                         or <span className="text-medical-red font-bold underline">browse local files</span> (JPG, PNG, PDF)
+                      </p>
+                      <p className="text-[10px] text-red-500 dark:text-red-400 font-semibold pt-0.5">
+                        ⚠ Mandatory — cannot submit without this document
                       </p>
                     </div>
                   </div>
