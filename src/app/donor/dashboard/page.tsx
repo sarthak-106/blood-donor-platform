@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/db';
 import { Donor, BloodRequest, DonorAvailability } from '@/lib/types';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
+import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt';
 import {
   Heart,
   Droplet,
@@ -100,6 +101,8 @@ export default function DonorDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Smart PWA Push Notification Prompt */}
+      <PushNotificationPrompt />
       
       {/* Header & Status Controller */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">

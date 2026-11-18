@@ -29,6 +29,8 @@ import {
   PlusCircle,
   Zap,
   Globe,
+  Calendar,
+  CheckCircle2,
 } from 'lucide-react';
 import { useLanguage, LANGUAGE_OPTIONS } from '@/context/LanguageContext';
 import { formatTimeAgo } from '@/lib/utils';
@@ -169,6 +171,20 @@ export const Navbar: React.FC = () => {
                 <div className="flex items-center space-x-1.5">
                   <Heart className="w-4 h-4 text-medical-red fill-current" />
                   <span>{t('community')}</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/camps"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive('/camps')
+                    ? 'text-medical-red bg-red-50 dark:bg-red-950/40 font-semibold'
+                    : 'text-slate-700 dark:text-slate-200 hover:text-medical-red hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center space-x-1.5">
+                  <Calendar className="w-4 h-4 text-amber-500" />
+                  <span>Camps</span>
                 </div>
               </Link>
 
@@ -447,6 +463,24 @@ export const Navbar: React.FC = () => {
             >
               <Heart className="w-4 h-4 text-medical-red fill-current" />
               <span>{t('community')}</span>
+            </Link>
+
+            <Link
+              href="/camps"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <Calendar className="w-4 h-4 text-amber-500" />
+              <span>Donation Camps</span>
+            </Link>
+
+            <Link
+              href="/eligibility"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span>Check Eligibility</span>
             </Link>
 
             <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">

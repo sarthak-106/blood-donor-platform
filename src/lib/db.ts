@@ -17,6 +17,7 @@ import {
   RequestStatus,
   ChatMessage,
   GratitudePost,
+  DonationCamp,
 } from './types';
 import {
   SEED_USERS,
@@ -47,6 +48,7 @@ interface DBState {
   auditLogs: AuditLog[];
   chatMessages: ChatMessage[];
   gratitudePosts: GratitudePost[];
+  donationCamps: DonationCamp[];
 }
 
 const DEFAULT_GRATITUDE_POSTS: GratitudePost[] = [
@@ -94,6 +96,65 @@ const DEFAULT_GRATITUDE_POSTS: GratitudePost[] = [
   },
 ];
 
+const DEFAULT_DONATION_CAMPS: DonationCamp[] = [
+  {
+    id: 'camp-1',
+    title: 'Mega Voluntary Blood Donation Drive 2026',
+    organizer: 'Rotary Club of Delhi Central & AIIMS',
+    city: 'New Delhi',
+    venue: 'Connaught Place Community Hall, Outer Circle, New Delhi',
+    date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+    time: '09:00 AM - 05:00 PM',
+    target_units: 250,
+    rsvp_count: 84,
+    contact_person: 'Dr. S. K. Mehra',
+    contact_phone: '+91 98112 34567',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'camp-2',
+    title: 'LifeSaver Weekend Blood Camp',
+    organizer: 'Indian Red Cross Society Maharashtra',
+    city: 'Mumbai',
+    venue: 'Bandra Reclamation Ground, Bandra West, Mumbai',
+    date: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0],
+    time: '10:00 AM - 06:00 PM',
+    target_units: 300,
+    rsvp_count: 142,
+    contact_person: 'Anil Deshmukh',
+    contact_phone: '+91 98205 67890',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'camp-3',
+    title: 'Techies Save Lives: IT Corridor Drive',
+    organizer: 'Lions Club Bengaluru & Narayana Hrudayalaya',
+    city: 'Bengaluru',
+    venue: 'Whitefield Community Amphitheatre, Bengaluru',
+    date: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+    time: '09:30 AM - 04:30 PM',
+    target_units: 200,
+    rsvp_count: 67,
+    contact_person: 'Pooja Hegde',
+    contact_phone: '+91 98450 12345',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'camp-4',
+    title: 'Pune Youth Blood Donation Festival',
+    organizer: 'Savitribai Phule Pune Univ & KEM Hospital',
+    city: 'Pune',
+    venue: 'KEM Hospital Auditorium, Rasta Peth, Pune',
+    date: new Date(Date.now() + 86400000 * 9).toISOString().split('T')[0],
+    time: '08:30 AM - 03:30 PM',
+    target_units: 150,
+    rsvp_count: 53,
+    contact_person: 'Nitin Kadam',
+    contact_phone: '+91 98230 98765',
+    created_at: new Date().toISOString(),
+  },
+];
+
 const STORAGE_KEY = 'blood_donor_platform_db_v2';
 
 class DatabaseEngine {
@@ -111,6 +172,7 @@ class DatabaseEngine {
           const saved = JSON.parse(savedStr);
           saved.chatMessages = saved.chatMessages || [];
           saved.gratitudePosts = saved.gratitudePosts || [...DEFAULT_GRATITUDE_POSTS];
+          saved.donationCamps = saved.donationCamps || [...DEFAULT_DONATION_CAMPS];
           return saved;
         }
       } catch (e) {
@@ -132,6 +194,7 @@ class DatabaseEngine {
       auditLogs: [],
       chatMessages: [],
       gratitudePosts: [...DEFAULT_GRATITUDE_POSTS],
+      donationCamps: [...DEFAULT_DONATION_CAMPS],
     };
   }
 
@@ -510,10 +573,21 @@ class DatabaseEngine {
     return this.state.bloodBanks.find((b) => b.id === id);
   }
 
-  updateBloodBankInventory(id: string, inventory: Record<BloodGroup, number>): BloodBank | undefined {
-    const bank = this.state.bloodBanks.find((b) => b.id === id);
+  updateBloodBankInventory(id: string, inventory: Record<BloodGroup, number>): BloodBank | undefined;
+  updateBloodBankInventory(bankId: string, group: BloodGroup, units: number): BloodBank | undefined;
+  updateBloodBankInventory(
+    bankId: string,
+    inventoryOrGroup: Record<BloodGroup, number> | BloodGroup,
+    units?: number
+  ): BloodBank | undefined {
+    const bank = (this.state.bloodBanks || []).find((b) => b.id === bankId);
     if (bank) {
-      bank.inventory = inventory;
+      if (!bank.inventory) bank.inventory = {} as Record<BloodGroup, number>;
+      if (typeof inventoryOrGroup === 'string') {
+        bank.inventory[inventoryOrGroup as BloodGroup] = Math.max(0, units ?? 0);
+      } else {
+        bank.inventory = inventoryOrGroup;
+      }
       bank.last_updated = new Date().toISOString();
       this.persist();
     }
@@ -831,6 +905,22 @@ class DatabaseEngine {
       }))
       .sort((a, b) => b.totalDonations - a.totalDonations);
   }
+
+  // --- Donation Camps ---
+  getDonationCamps(): DonationCamp[] {
+    return [...(this.state.donationCamps || DEFAULT_DONATION_CAMPS)].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  }
+
+  rsvpDonationCamp(id: string): void {
+    const camp = (this.state.donationCamps || []).find((c) => c.id === id);
+    if (camp) {
+      camp.rsvp_count = (camp.rsvp_count || 0) + 1;
+      this.persist();
+    }
+  }
+
 
   // --- Reset to initial state ---
   resetToDefaults(): void {

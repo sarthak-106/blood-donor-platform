@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   description:
     'A centralized digital ecosystem connecting voluntary blood donors, patients, and healthcare networks with real-time transfusion compatibility, GPS discovery, and emergency SOS dispatch.',
   keywords: ['blood donor', 'find blood', 'emergency blood SOS', 'blood compatibility', 'blood banks india'],
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

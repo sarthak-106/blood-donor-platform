@@ -246,3 +246,18 @@ export interface GratitudePost {
   hospital: string;
   created_at: string;
 }
+
+export interface DonationCamp {
+  id: string;
+  title: string;
+  organizer: string;
+  city: string;
+  venue: string;
+  date: string; // YYYY-MM-DD
+  time: string; // e.g. "09:00 AM - 04:00 PM"
+  target_units: number;
+  rsvp_count: number;
+  contact_person: string;
+  contact_phone: string;
+  created_at: string;
+}
