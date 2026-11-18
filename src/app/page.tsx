@@ -75,14 +75,11 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.15]">
-              Connecting Blood Donors. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 via-rose-600 to-red-500">
-                Saving Precious Lives.
-              </span>
+              {t('heroTitle')}
             </h1>
 
             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Find verified, nearby voluntary donors in seconds. Powered by smart transfusion compatibility algorithms, instant emergency SOS broadcast, and digital QR donor verification.
+              {t('heroSubtitle')}
             </p>
           </div>
 
@@ -419,7 +416,7 @@ export default function HomePage() {
               <span>Verified Life Savers</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              Featured Available Donors
+              {t('featuredDonors')}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               Identity-verified voluntary donors ready for routine and emergency coordination.
@@ -430,7 +427,7 @@ export default function HomePage() {
             href="/find-donor"
             className="mt-3 sm:mt-0 inline-flex items-center space-x-1.5 text-xs font-bold text-medical-red hover:underline"
           >
-            <span>View All Donors</span>
+            <span>{t('viewAllDonors')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -446,10 +443,10 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            How The Platform Works
+            {t('howItWorks')}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            A seamless, transparent loop designed to bridge the gap between donors and patients in need.
+            {t('howItWorksSubtitle')}
           </p>
         </div>
 
@@ -460,10 +457,10 @@ export default function HomePage() {
               01
             </div>
             <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
-              1. Search or Trigger SOS
+              {t('step1Title')}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Recipients filter by blood group and metro location or trigger an instant Emergency SOS broadcast to all compatible nearby donors.
+              {t('step1Desc')}
             </p>
           </div>
 
@@ -473,10 +470,10 @@ export default function HomePage() {
               02
             </div>
             <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
-              2. Instant Donor Notification
+              {t('step2Title')}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Available donors receive rapid alerts with patient details and hospital location, allowing them to accept and share an estimated arrival time.
+              {t('step2Desc')}
             </p>
           </div>
 
@@ -486,10 +483,10 @@ export default function HomePage() {
               03
             </div>
             <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
-              3. Hospital Verification & Donation
+              {t('step3Title')}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              The donor presents their digital QR pass at the hospital or blood bank. Certified cross-matching is performed and the donation is logged.
+              {t('step3Desc')}
             </p>
           </div>
         </div>
@@ -500,10 +497,10 @@ export default function HomePage() {
         <div className="bg-gradient-to-r from-red-600 to-rose-600 rounded-3xl p-8 sm:p-12 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
             <h2 className="text-2xl sm:text-3xl font-black">
-              Ready to Become a Verified Life Saver?
+              {t('readyToSaveLife')}
             </h2>
             <p className="text-xs sm:text-sm text-red-100 leading-relaxed">
-              Join thousands of voluntary donors. Track your donation milestones, earn digital badges, and save lives in your local community.
+              {t('readyToSaveLifeDesc')}
             </p>
           </div>
 

@@ -184,7 +184,7 @@ export const Navbar: React.FC = () => {
               >
                 <div className="flex items-center space-x-1.5">
                   <Calendar className="w-4 h-4 text-amber-500" />
-                  <span>Camps</span>
+                  <span>{t('camps')}</span>
                 </div>
               </Link>
 
@@ -223,7 +223,7 @@ export const Navbar: React.FC = () => {
                 className="hidden sm:inline-flex items-center space-x-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md shadow-red-500/25 transition-all hover:scale-105"
               >
                 <Zap className="w-4 h-4 fill-current animate-pulse" />
-                <span>Emergency SOS</span>
+                <span>{t('emergencySos')}</span>
               </Link>
 
               {/* Dedicated Sign In Button for Guests */}
@@ -234,7 +234,7 @@ export const Navbar: React.FC = () => {
                     className="inline-flex items-center space-x-1.5 bg-white dark:bg-slate-800 text-medical-red hover:bg-red-50 dark:hover:bg-red-950/40 border border-medical-red/30 text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-sm"
                   >
                     <User className="w-3.5 h-3.5" />
-                    <span>Sign In</span>
+                    <span>{t('signIn')}</span>
                   </Link>
                 </div>
               ) : (
@@ -465,7 +465,7 @@ export const Navbar: React.FC = () => {
               className="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <Calendar className="w-4 h-4 text-amber-500" />
-              <span>Donation Camps</span>
+              <span>{t('camps')}</span>
             </Link>
 
             <Link
@@ -474,7 +474,7 @@ export const Navbar: React.FC = () => {
               className="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>Check Eligibility</span>
+              <span>{t('eligibility')}</span>
             </Link>
 
             <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
@@ -484,7 +484,7 @@ export const Navbar: React.FC = () => {
                 className="w-full flex items-center justify-center space-x-2 bg-white dark:bg-slate-800 border border-medical-red/30 text-medical-red py-2.5 rounded-xl font-bold text-sm shadow-sm"
               >
                 <User className="w-4 h-4" />
-                <span>Sign In</span>
+                <span>{t('signIn')}</span>
               </Link>
               <Link
                 href="/recipient/emergency-sos"
@@ -492,7 +492,7 @@ export const Navbar: React.FC = () => {
                 className="w-full flex items-center justify-center space-x-2 bg-medical-red text-white py-3 rounded-xl font-bold text-sm shadow-md"
               >
                 <Zap className="w-4 h-4 fill-current" />
-                <span>Trigger Emergency SOS</span>
+                <span>{t('emergencySos')}</span>
               </Link>
             </div>
           </div>

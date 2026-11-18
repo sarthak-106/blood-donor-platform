@@ -1,9 +1,13 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { Droplet, Heart, Shield, Award, Phone, Mail, MapPin, ExternalLink } from 'lucide-react';
 import { MEDICAL_SAFETY_DISCLAIMER } from '@/lib/compatibility';
+import { useLanguage } from '@/context/LanguageContext';
 
 export const Footer: React.FC = () => {
+  const { t } = useLanguage();
   return (
     <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 pt-14 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,28 +43,28 @@ export const Footer: React.FC = () => {
             <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Discovery</h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/find-donor" className="hover:text-white transition">Find Donors</Link>
+                <Link href="/find-donor" className="hover:text-white transition">{t('findDonors')}</Link>
               </li>
               <li>
-                <Link href="/blood-recognition" className="hover:text-white transition">Blood Group Guide</Link>
+                <Link href="/blood-recognition" className="hover:text-white transition">{t('bloodGroupGuide')}</Link>
               </li>
               <li>
-                <Link href="/blood-compatibility" className="hover:text-white transition">Compatibility Matrix</Link>
+                <Link href="/blood-compatibility" className="hover:text-white transition">{t('compatibilityMatrix')}</Link>
               </li>
               <li>
-                <Link href="/blood-banks" className="hover:text-white transition">Blood Banks Directory</Link>
+                <Link href="/blood-banks" className="hover:text-white transition">{t('bloodBanks')}</Link>
               </li>
               <li>
-                <Link href="/camps" className="hover:text-white transition">Donation Camps</Link>
+                <Link href="/camps" className="hover:text-white transition">{t('camps')}</Link>
               </li>
               <li>
-                <Link href="/eligibility" className="hover:text-white transition">Eligibility Checker</Link>
+                <Link href="/eligibility" className="hover:text-white transition">{t('eligibility')}</Link>
               </li>
               <li>
-                <Link href="/community" className="hover:text-white transition text-amber-400 font-semibold">Community & Thank You Wall</Link>
+                <Link href="/community" className="hover:text-white transition text-amber-400 font-semibold">{t('community')}</Link>
               </li>
               <li>
-                <Link href="/recipient/emergency-sos" className="text-medical-red hover:underline font-semibold">Emergency SOS</Link>
+                <Link href="/recipient/emergency-sos" className="text-medical-red hover:underline font-semibold">{t('emergencySos')}</Link>
               </li>
             </ul>
           </div>
