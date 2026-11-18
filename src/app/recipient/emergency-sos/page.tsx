@@ -255,7 +255,7 @@ export default function EmergencySOSPage() {
 
       // Build WhatsApp share URL
       const waMsg = encodeURIComponent(
-        `🚨 *URGENT BLOOD NEEDED* 🚨\n\nPatient: *${patientName}*\nBlood Group: *${bloodGroup}* (${quantity} unit(s))\nHospital: *${hospital}*, ${city}\nContact: ${contactPhone}\n\nPlease help or share this message. Every second counts! 🙏\n\nFind donors: ${typeof window !== 'undefined' ? window.location.origin : 'https://lifelink.vercel.app'}/find-donor`
+        `🚨 *URGENT BLOOD NEEDED* 🚨\n\nPatient: *${patientName}*\nBlood Group: *${bloodGroup}* (${quantity} unit(s))\nHospital: *${hospital}*, ${city}\nContact: ${contactPhone}\n\nPlease help or share this message. Every second counts! 🙏\n\nFind donors: ${typeof window !== 'undefined' ? window.location.origin : 'https://blood-donor-platform-2gef.vercel.app'}/find-donor`
       );
       setWhatsappShareUrl(`https://wa.me/?text=${waMsg}`);
 

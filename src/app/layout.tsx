@@ -8,6 +8,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://blood-donor-platform-2gef.vercel.app'),
   title: {
     default: 'BloodDonor Platform — Emergency Blood Matching & Donor Registry',
     template: '%s | BloodDonor Platform',
