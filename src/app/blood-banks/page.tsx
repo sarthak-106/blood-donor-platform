@@ -17,9 +17,6 @@ import {
   ShieldCheck,
   Droplet,
   ExternalLink,
-  Edit3,
-  X,
-  CheckCircle2,
   AlertTriangle,
   Heart,
   PlusCircle,
@@ -32,12 +29,6 @@ export default function BloodBanksPage() {
   const [selectedGroup, setSelectedGroup] = useState<BloodGroup | 'All'>('All');
   const [is24x7Only, setIs24x7Only] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // Stock edit modal
-  const [editingBank, setEditingBank] = useState<BloodBank | null>(null);
-  const [editGroup, setEditGroup] = useState<BloodGroup>('B+');
-  const [editUnits, setEditUnits] = useState<number>(10);
-  const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Live Blood Bank Stock & 24x7 Storage Units | BloodDonor Platform';
@@ -70,18 +61,6 @@ export default function BloodBanksPage() {
       }
       return 0;
     });
-
-  const handleUpdateStock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingBank) return;
-
-    db.updateBloodBankInventory(editingBank.id, editGroup, Number(editUnits));
-    setEditSuccess(`Stock for ${editGroup} updated to ${editUnits} units.`);
-    setTimeout(() => {
-      setEditSuccess(null);
-      setEditingBank(null);
-    }, 1200);
-  };
 
   const getStockStatus = (units: number) => {
     if (units === 0) {
@@ -295,18 +274,9 @@ export default function BloodBanksPage() {
                       <Activity className="w-3 h-3 text-red-500" />
                       <span>Live Stock Inventory (Units):</span>
                     </span>
-                    <button
-                      onClick={() => {
-                        setEditingBank(bank);
-                        setEditGroup(selectedGroup !== 'All' ? selectedGroup : 'B+');
-                        setEditUnits(bank.inventory[selectedGroup !== 'All' ? selectedGroup : 'B+'] || 0);
-                      }}
-                      className="text-[10px] font-bold text-slate-400 hover:text-red-500 flex items-center space-x-1 transition"
-                      title="Update blood bank inventory"
-                    >
-                      <Edit3 className="w-3 h-3" />
-                      <span>Update Stock</span>
-                    </button>
+                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                      Live Hospital Feed
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
@@ -380,81 +350,6 @@ export default function BloodBanksPage() {
           );
         })}
       </div>
-
-      {/* Modal: Update Stock */}
-      {editingBank && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white">
-                  Update Stock Inventory
-                </h3>
-                <p className="text-[11px] text-slate-500 truncate">{editingBank.name}</p>
-              </div>
-              <button
-                onClick={() => setEditingBank(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {editSuccess ? (
-              <div className="py-6 text-center space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-                <p className="text-xs font-bold text-emerald-600">{editSuccess}</p>
-              </div>
-            ) : (
-              <form onSubmit={handleUpdateStock} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Select Blood Group
-                  </label>
-                  <select
-                    value={editGroup}
-                    onChange={(e) => {
-                      const bg = e.target.value as BloodGroup;
-                      setEditGroup(bg);
-                      setEditUnits(editingBank.inventory[bg] || 0);
-                    }}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
-                  >
-                    {ALL_BLOOD_GROUPS.map((bg) => (
-                      <option key={bg} value={bg}>
-                        {bg}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Available Units (Bags)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="500"
-                    value={editUnits}
-                    onChange={(e) => setEditUnits(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 rounded-xl bg-medical-red hover:bg-red-700 text-white font-bold text-xs shadow transition"
-                  >
-                    Save Inventory Update
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
