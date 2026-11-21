@@ -360,25 +360,25 @@ export default function HomePage() {
 
       {/* 3. INTERACTIVE BLOOD COMPATIBILITY MATRIX TEASER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="glass-panel rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-white/10 shadow-xl">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
             <div className="lg:col-span-5 space-y-4">
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/60 text-medical-red text-xs font-bold">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-black">
                 <Activity className="w-3.5 h-3.5" />
                 <span>Interactive Transfusion Engine</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                 Understand Transfusion Compatibility in 1 Click
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 Transfusion medicine relies on precise ABO and Rh blood group antigens. Click any blood type below to test recipient and donor eligibility in real time.
               </p>
 
               <div className="pt-2">
                 <Link
                   href="/blood-compatibility"
-                  className="inline-flex items-center space-x-2 text-xs font-bold text-medical-red hover:underline"
+                  className="inline-flex items-center space-x-2 text-xs font-bold text-red-600 dark:text-red-400 hover:underline"
                 >
                   <span>Explore Full Matrix (RBC, Plasma & Platelets)</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -387,8 +387,8 @@ export default function HomePage() {
             </div>
 
             {/* Interactive Selector & Display */}
-            <div className="lg:col-span-7 bg-slate-50 dark:bg-slate-800/60 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-3">
+            <div className="lg:col-span-7 bg-slate-100/70 dark:bg-slate-800/40 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-inner">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-3">
                 Select a Blood Type to Inspect:
               </span>
               
@@ -400,10 +400,10 @@ export default function HomePage() {
                     <button
                       key={bg}
                       onClick={() => setCompatBloodType(bg)}
-                      className={`py-2 rounded-xl text-xs font-black transition-all ${
+                      className={`py-2.5 rounded-xl text-xs font-black transition-all ${
                         isSelected
-                          ? 'bg-medical-red text-white shadow-md scale-105 ring-2 ring-red-400'
-                          : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-red-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
+                          ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/30 scale-105 ring-2 ring-red-400/50'
+                          : 'bg-white dark:bg-slate-700/80 text-slate-800 dark:text-slate-200 hover:bg-red-50 dark:hover:bg-slate-600 border border-slate-200/70 dark:border-white/5'
                       }`}
                     >
                       {bg}
@@ -414,12 +414,12 @@ export default function HomePage() {
 
               {/* Dynamic compatibility result cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="glass-panel p-4 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
                       Can Receive RBC From:
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-400 font-mono">
                       ({compatData.canReceiveFrom.length} {compatData.canReceiveFrom.length === 1 ? 'type' : 'types'})
                     </span>
                   </div>
@@ -430,12 +430,12 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="glass-panel p-4 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
                       Can Donate RBC To:
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-400 font-mono">
                       ({compatData.canDonateTo.length} {compatData.canDonateTo.length === 1 ? 'type' : 'types'})
                     </span>
                   </div>
@@ -556,50 +556,59 @@ export default function HomePage() {
       {/* 6. HOW IT WORKS WORKFLOW */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-black">
+            <span>Seamless Coordination</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
             {t('howItWorks')}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
             {t('howItWorksSubtitle')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Step 1 */}
-          <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-sm relative">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-medical-red flex items-center justify-center font-black text-lg mb-4">
-              01
+          <div className="glass-panel rounded-3xl p-7 border border-slate-200/80 dark:border-white/10 shadow-lg hover:shadow-2xl hover:border-red-500/40 hover:-translate-y-1.5 transition-all duration-300 relative group">
+            <div className="w-13 h-13 p-0.5 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center font-black text-lg mb-5 shadow-md shadow-red-600/30 group-hover:scale-110 transition-transform">
+              <span className="w-full h-full rounded-[14px] bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 flex items-center justify-center">
+                01
+              </span>
             </div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
+            <h3 className="font-black text-lg text-slate-900 dark:text-white mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
               {t('step1Title')}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
               {t('step1Desc')}
             </p>
           </div>
 
           {/* Step 2 */}
-          <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-sm relative">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-medical-red flex items-center justify-center font-black text-lg mb-4">
-              02
+          <div className="glass-panel rounded-3xl p-7 border border-slate-200/80 dark:border-white/10 shadow-lg hover:shadow-2xl hover:border-red-500/40 hover:-translate-y-1.5 transition-all duration-300 relative group">
+            <div className="w-13 h-13 p-0.5 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center font-black text-lg mb-5 shadow-md shadow-rose-600/30 group-hover:scale-110 transition-transform">
+              <span className="w-full h-full rounded-[14px] bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                02
+              </span>
             </div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
+            <h3 className="font-black text-lg text-slate-900 dark:text-white mb-2 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
               {t('step2Title')}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
               {t('step2Desc')}
             </p>
           </div>
 
           {/* Step 3 */}
-          <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-sm relative">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-medical-red flex items-center justify-center font-black text-lg mb-4">
-              03
+          <div className="glass-panel rounded-3xl p-7 border border-slate-200/80 dark:border-white/10 shadow-lg hover:shadow-2xl hover:border-red-500/40 hover:-translate-y-1.5 transition-all duration-300 relative group">
+            <div className="w-13 h-13 p-0.5 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center font-black text-lg mb-5 shadow-md shadow-emerald-600/30 group-hover:scale-110 transition-transform">
+              <span className="w-full h-full rounded-[14px] bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                03
+              </span>
             </div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
+            <h3 className="font-black text-lg text-slate-900 dark:text-white mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               {t('step3Title')}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
               {t('step3Desc')}
             </p>
           </div>
@@ -608,26 +617,33 @@ export default function HomePage() {
 
       {/* 7. CALL TO ACTION FOR DONORS */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-r from-red-600 to-rose-600 rounded-3xl p-8 sm:p-12 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <h2 className="text-2xl sm:text-3xl font-black">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-red-600 via-rose-600 to-red-700 p-8 sm:p-14 text-white shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-8 border border-red-500/30">
+          <div className="absolute -top-24 -right-24 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-black/20 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="space-y-3 max-w-xl relative z-10">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-black">
+              <Heart className="w-3.5 h-3.5 fill-current" />
+              <span>Join India&apos;s Lifesaver Network</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
               {t('readyToSaveLife')}
             </h2>
-            <p className="text-xs sm:text-sm text-red-100 leading-relaxed">
+            <p className="text-xs sm:text-sm text-red-100 leading-relaxed font-medium">
               {t('readyToSaveLifeDesc')}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3 shrink-0">
+          <div className="flex flex-wrap gap-3.5 shrink-0 relative z-10">
             <Link
               href="/auth?mode=register&role=donor"
-              className="px-6 py-3 rounded-xl bg-white text-red-700 hover:bg-red-50 font-black text-xs sm:text-sm shadow-md transition"
+              className="px-6 py-3.5 rounded-2xl bg-white text-red-700 hover:bg-red-50 font-black text-xs sm:text-sm shadow-xl hover:shadow-2xl hover:scale-105 transition-all"
             >
               Register as Donor
             </Link>
             <Link
               href="/recipient/create-request"
-              className="px-6 py-3 rounded-xl bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm border border-red-400/30 transition"
+              className="px-6 py-3.5 rounded-2xl bg-black/30 hover:bg-black/40 text-white font-black text-xs sm:text-sm border border-white/20 backdrop-blur-md transition-all"
             >
               Request Blood
             </Link>
