@@ -25,7 +25,20 @@ import {
   AlertTriangle,
   QrCode,
   Award,
+  Radio,
+  MapPin,
+  Flame,
+  ChevronRight,
 } from 'lucide-react';
+
+const LIVE_RADAR_ITEMS = [
+  { hospital: 'AIIMS New Delhi', city: 'Delhi', group: 'B+', type: 'Platelets', time: '4m ago' },
+  { hospital: 'KEM Hospital', city: 'Mumbai', group: 'O-', type: 'Whole Blood', time: '11m ago' },
+  { hospital: 'Apollo Hospitals', city: 'Chennai', group: 'A+', type: 'Plasma', time: '18m ago' },
+  { hospital: 'Fortis Hospital', city: 'Bengaluru', group: 'AB-', type: 'Platelets', time: '25m ago' },
+  { hospital: 'Tata Memorial', city: 'Mumbai', group: 'O+', type: 'PRBC', time: '32m ago' },
+  { hospital: 'Safdarjung Hospital', city: 'Delhi', group: 'B-', type: 'Whole Blood', time: '39m ago' },
+];
 
 export default function HomePage() {
   const router = useRouter();
@@ -57,154 +70,255 @@ export default function HomePage() {
   return (
     <div className="space-y-16 pb-20 overflow-hidden">
       
+      {/* 0. LIVE EMERGENCY SOS RADAR MARQUEE TICKER */}
+      <div className="w-full bg-slate-950/90 dark:bg-black/90 backdrop-blur-md border-y border-red-900/30 py-2.5 overflow-hidden relative shadow-inner">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center">
+          <div className="flex items-center space-x-2 shrink-0 pr-4 sm:pr-6 border-r border-slate-800 z-10 bg-slate-950/90 dark:bg-black/90">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-red-500" />
+              <span>Live SOS Radar</span>
+            </span>
+          </div>
+
+          {/* Marquee ticker content */}
+          <div className="overflow-hidden whitespace-nowrap pl-4 sm:pl-6 flex-1">
+            <div className="animate-marquee flex items-center space-x-8">
+              {[...LIVE_RADAR_ITEMS, ...LIVE_RADAR_ITEMS].map((item, idx) => (
+                <Link
+                  key={idx}
+                  href={`/find-donor?bloodGroup=${encodeURIComponent(item.group)}&city=${encodeURIComponent(item.city)}`}
+                  className="inline-flex items-center space-x-2 text-xs text-slate-300 hover:text-white transition group"
+                >
+                  <span className="px-2 py-0.5 rounded-md bg-red-600/20 border border-red-500/40 text-red-400 font-mono font-bold text-[10px]">
+                    {item.group} {item.type}
+                  </span>
+                  <span className="font-semibold text-slate-200 group-hover:text-red-400 transition-colors">
+                    {item.hospital}, {item.city}
+                  </span>
+                  <span className="text-[10px] text-slate-500">• {item.time}</span>
+                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                    Matching
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 1. HERO SECTION */}
-      <section className="relative pt-8 sm:pt-14 pb-12 overflow-hidden">
-        {/* Subtle Background Red Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] bg-gradient-to-b from-red-500/10 via-red-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
+      <section className="relative pt-6 sm:pt-12 pb-10 overflow-hidden">
+        {/* Dynamic Multi-Layer Ambient Red Mesh Glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[650px] pointer-events-none -z-10 overflow-hidden">
+          <div className="absolute -top-24 left-1/4 w-[480px] h-[480px] bg-red-600/15 dark:bg-red-600/20 rounded-full blur-[140px] animate-pulse-slow" />
+          <div className="absolute top-12 right-1/4 w-[420px] h-[420px] bg-rose-500/10 dark:bg-rose-500/15 rounded-full blur-[130px]" />
+          <div className="absolute top-36 left-1/2 -translate-x-1/2 w-[720px] h-[280px] bg-gradient-to-r from-red-600/10 via-amber-500/5 to-rose-600/10 rounded-full blur-[120px]" />
+        </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto space-y-4">
             
             {/* Top pill badge */}
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-100 dark:bg-red-950/80 text-medical-red text-xs font-bold shadow-sm">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-medical-red opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-medical-red"></span>
+            <div className="inline-flex items-center space-x-2.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-red-500/10 via-rose-500/10 to-amber-500/10 border border-red-500/30 text-slate-800 dark:text-red-300 text-xs font-bold shadow-sm shadow-red-500/5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
               </span>
-              <span>Fastest Real-time Blood Donation & Emergency Coordination</span>
+              <span>Zero Commercialization • 100% Free & Verified Voluntary Network</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.15]">
-              {t('heroTitle')}
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.12]">
+              Every Drop Connects. <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 via-rose-500 to-amber-500">
+                Every Second Saves a Life.
+              </span>
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
               {t('heroSubtitle')}
             </p>
           </div>
 
-          {/* Floating Search Hub Box */}
+          {/* Glassmorphic Search Command Center */}
           <div className="mt-8 max-w-4xl mx-auto">
             <form
               onSubmit={handleQuickSearch}
-              className="bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl border border-slate-200/80 dark:border-slate-800 backdrop-blur-md"
+              className="glass-panel rounded-3xl p-5 sm:p-7 shadow-2xl border border-slate-200/80 dark:border-white/10 relative overflow-hidden backdrop-blur-xl"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center">
+              {/* Subtle top shimmer bar */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-80" />
+
+              <div className="space-y-6">
                 
-                {/* Blood Group Select */}
-                <div className="sm:col-span-4">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                    1. Blood Group Required
-                  </label>
-                  <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-700">
-                    <Droplet className="w-5 h-5 text-medical-red shrink-0" />
-                    <select
-                      value={selectedBloodGroup}
-                      onChange={(e) => setSelectedBloodGroup(e.target.value as BloodGroup)}
-                      className="w-full bg-transparent text-sm font-extrabold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
-                    >
-                      <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">
-                        Select blood group
-                      </option>
-                      {ALL_BLOOD_GROUPS.map((bg) => {
-                        const count = RBC_COMPATIBILITY[bg].canReceiveFrom.length;
-                        return (
-                          <option key={bg} value={bg} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                            {bg} — can receive from {count} {count === 1 ? 'type' : 'types'}
-                          </option>
-                        );
-                      })}
-                    </select>
+                {/* 1. Interactive Blood Group Matrix Chips */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                      <Droplet className="w-4 h-4 text-medical-red fill-current" />
+                      <span>1. Select Required Blood Group</span>
+                    </label>
+
+                    {selectedBloodGroup && (
+                      <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        {selectedBloodGroup === 'O-'
+                          ? 'Universal Donor (Can give to all 8 types)'
+                          : selectedBloodGroup === 'AB+'
+                          ? 'Universal Recipient (Can receive from all 8 types)'
+                          : `Compatible with ${RBC_COMPATIBILITY[selectedBloodGroup].canReceiveFrom.length} donor types`}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 8 Tactile Interactive Chips */}
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                    {ALL_BLOOD_GROUPS.map((bg) => {
+                      const isSelected = selectedBloodGroup === bg;
+                      const isCompatible =
+                        selectedBloodGroup &&
+                        RBC_COMPATIBILITY[selectedBloodGroup].canReceiveFrom.includes(bg);
+
+                      return (
+                        <button
+                          key={bg}
+                          type="button"
+                          onClick={() => setSelectedBloodGroup(isSelected ? '' : bg)}
+                          className={`relative group p-2.5 sm:py-3 rounded-2xl font-black text-sm transition-all duration-200 flex flex-col items-center justify-center border cursor-pointer ${
+                            isSelected
+                              ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white border-red-500 shadow-lg shadow-red-600/30 scale-105 ring-2 ring-red-400/50'
+                              : isCompatible
+                              ? 'bg-emerald-500/10 dark:bg-emerald-950/40 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 hover:scale-102 hover:border-emerald-500'
+                              : 'bg-white/90 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-200 hover:border-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20'
+                          }`}
+                        >
+                          <span className="text-base tracking-tight">{bg}</span>
+                          {isSelected && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-white mt-0.5 animate-ping" />
+                          )}
+                          {isCompatible && !isSelected && (
+                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">
+                              Match
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* City Location */}
-                <div className="sm:col-span-5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                    2. Location / Metro Area
-                  </label>
-                  <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-700">
-                    <Building2 className="w-5 h-5 text-slate-400 shrink-0" />
-                    <select
-                      value={selectedCity}
-                      onChange={(e) => setSelectedCity(e.target.value)}
-                      className="w-full bg-transparent text-sm font-semibold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                {/* 2. Location & Quick Search Action Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center pt-2">
+                  
+                  {/* City Location */}
+                  <div className="sm:col-span-7">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-slate-400" />
+                      <span>2. Metro Hospital Region</span>
+                    </label>
+                    <div className="flex items-center space-x-2 bg-white/90 dark:bg-slate-800/90 rounded-2xl px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 shadow-inner">
+                      <MapPin className="w-4 h-4 text-medical-red shrink-0" />
+                      <select
+                        value={selectedCity}
+                        onChange={(e) => setSelectedCity(e.target.value)}
+                        className="w-full bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                      >
+                        <option value="All Cities">All Indian Cities & Regions</option>
+                        <option value="New Delhi">Delhi NCR (AIIMS, Saket, Connaught Place)</option>
+                        <option value="Mumbai">Mumbai (Bandra, Parel, Andheri, KEM)</option>
+                        <option value="Bengaluru">Bengaluru (Koramangala, Indiranagar, Whitefield)</option>
+                        <option value="Hyderabad">Hyderabad (Banjara Hills, Hitec City)</option>
+                        <option value="Chennai">Chennai (Greams Road, Adyar, Anna Nagar)</option>
+                        <option value="Kolkata">Kolkata (Park Street, Salt Lake)</option>
+                        <option value="Pune">Pune (Kothrud, Viman Nagar, Hinjewadi)</option>
+                        <option value="Ahmedabad">Ahmedabad (Navrangpura, Satellite)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Search Button */}
+                  <div className="sm:col-span-5 sm:self-end">
+                    <button
+                      type="submit"
+                      className="w-full h-12 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm uppercase tracking-wider shadow-xl shadow-red-600/30 hover:shadow-red-600/50 transition-all duration-300 flex items-center justify-center space-x-2 hover:scale-[1.02] active:scale-98 cursor-pointer"
                     >
-                      <option value="All Cities">All Indian Cities</option>
-                      <option value="New Delhi">Delhi NCR (AIIMS, Saket, Connaught Place)</option>
-                      <option value="Mumbai">Mumbai (Bandra, Parel, Andheri)</option>
-                      <option value="Bengaluru">Bengaluru (Koramangala, Indiranagar, Whitefield)</option>
-                      <option value="Hyderabad">Hyderabad (Banjara Hills, Hitec City)</option>
-                      <option value="Chennai">Chennai (Greams Road, Adyar, Anna Nagar)</option>
-                      <option value="Kolkata">Kolkata (Park Street, Salt Lake)</option>
-                      <option value="Pune">Pune (Kothrud, Viman Nagar, Hinjewadi)</option>
-                      <option value="Ahmedabad">Ahmedabad (Navrangpura, Satellite)</option>
-                    </select>
+                      <Search className="w-4 h-4" />
+                      <span>{t('searchDonors')}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Search Button */}
-                <div className="sm:col-span-3 sm:self-end">
-                  <button
-                    type="submit"
-                    className="w-full h-12 rounded-xl bg-medical-red hover:bg-red-700 text-white font-bold text-sm shadow-md shadow-red-500/25 transition-all duration-200 flex items-center justify-center space-x-2 hover:scale-[1.02]"
+                {/* Bottom Search Filter Checkbox Options */}
+                <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <label className="flex items-center space-x-2 text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={includeCompatible}
+                      onChange={(e) => setIncludeCompatible(e.target.checked)}
+                      className="rounded text-medical-red focus:ring-medical-red h-4 w-4"
+                    />
+                    <span>
+                      Include all medically compatible types (e.g. O- universal donors)
+                    </span>
+                  </label>
+
+                  <Link
+                    href="/recipient/emergency-sos"
+                    className="text-medical-red hover:underline font-bold flex items-center space-x-1.5"
                   >
-                    <Search className="w-4 h-4" />
-                    <span>{t('searchDonors')}</span>
-                  </button>
+                    <Zap className="w-4 h-4 fill-current animate-pulse" />
+                    <span>Immediate Life-Threatening Emergency? Click SOS</span>
+                  </Link>
                 </div>
-              </div>
-
-              {/* Bottom Search Filter Checkbox Options */}
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <label className="flex items-center space-x-2 text-slate-600 dark:text-slate-300 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={includeCompatible}
-                    onChange={(e) => setIncludeCompatible(e.target.checked)}
-                    className="rounded text-medical-red focus:ring-medical-red h-4 w-4"
-                  />
-                  <span>
-                    Include all medically compatible types (e.g. O- universal donors)
-                  </span>
-                </label>
-
-                <Link
-                  href="/recipient/emergency-sos"
-                  className="text-medical-red hover:underline font-bold flex items-center space-x-1"
-                >
-                  <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
-                  <span>Immediate Life-Threatening Emergency? Click SOS</span>
-                </Link>
               </div>
             </form>
           </div>
 
-          {/* Platform Impact Counters */}
+          {/* Modernized Floating Impact & Trust Metrics */}
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 text-center shadow-sm">
-              <span className="block text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+            <div className="glass-panel rounded-2xl p-4 sm:p-5 text-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 border border-slate-200/60 dark:border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/80 text-medical-red flex items-center justify-center mx-auto mb-2">
+                <Users className="w-5 h-5" />
+              </div>
+              <span className="block text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                 1,280+
               </span>
-              <span className="text-xs text-slate-500 font-medium">Verified Active Donors</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Verified Active Donors</span>
             </div>
-            <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 text-center shadow-sm">
-              <span className="block text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+
+            <div className="glass-panel rounded-2xl p-4 sm:p-5 text-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 border border-slate-200/60 dark:border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <span className="block text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
                 98.4%
               </span>
-              <span className="text-xs text-slate-500 font-medium">Response Rate</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Coordination Success</span>
             </div>
-            <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 text-center shadow-sm">
-              <span className="block text-2xl sm:text-3xl font-black text-medical-red">
-                &lt; 12 mins
+
+            <div className="glass-panel rounded-2xl p-4 sm:p-5 text-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 border border-slate-200/60 dark:border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 flex items-center justify-center mx-auto mb-2">
+                <Zap className="w-5 h-5 fill-current animate-pulse" />
+              </div>
+              <span className="block text-2xl sm:text-3xl font-black text-medical-red tracking-tight">
+                &lt; 9 mins
               </span>
-              <span className="text-xs text-slate-500 font-medium">Average Response Time</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Avg Emergency Response</span>
             </div>
-            <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 text-center shadow-sm">
-              <span className="block text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+
+            <div className="glass-panel rounded-2xl p-4 sm:p-5 text-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 border border-slate-200/60 dark:border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-500 flex items-center justify-center mx-auto mb-2">
+                <Heart className="w-5 h-5 fill-current" />
+              </div>
+              <span className="block text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                 3,450+
               </span>
-              <span className="text-xs text-slate-500 font-medium">Units Coordinated</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Lives Saved Together</span>
             </div>
           </div>
         </div>
