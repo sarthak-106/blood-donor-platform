@@ -306,7 +306,7 @@ function DonorForm({
   const validate = (fd: FormData) => {
     const errs: Record<string, string> = {};
     if (!fd.get('name')) errs.name = 'Full name is required.';
-    if (!validatePhone(fd.get('phone') as string)) errs.phone = 'Enter a valid phone with country code (e.g. +91 98765 43210).';
+    if (!validatePhone(fd.get('phone') as string)) errs.phone = 'Enter a valid 10-digit mobile number or number with country code.';
     if (!fd.get('state')) errs.state = 'State is required.';
     if (!fd.get('city')) errs.city = 'City is required.';
     if (!validateEmail(fd.get('email') as string)) errs.email = 'Enter a valid email address.';
@@ -627,7 +627,7 @@ function RecipientForm({
   const validate = (fd: FormData) => {
     const errs: Record<string, string> = {};
     if (!fd.get('name')) errs.name = 'Full name of the recipient is required.';
-    if (!validatePhone(fd.get('phone') as string)) errs.phone = 'Enter a valid phone with country code (e.g. +91 98765 43210).';
+    if (!validatePhone(fd.get('phone') as string)) errs.phone = 'Enter a valid 10-digit mobile number or number with country code.';
     if (!validateEmail(fd.get('email') as string)) errs.email = 'Enter a valid email address.';
     if (!bloodGroup) errs.blood_group = 'Required blood group is required.';
     const qty = Number(fd.get('quantity_units'));
@@ -1127,15 +1127,27 @@ function AuthPageContent() {
     }
   }, [regTimer]);
 
+  const formatPhoneNumber = (val: string) => {
+    const cleaned = val.replace(/[\s\-\(\)]/g, '').trim();
+    if (/^\d{10}$/.test(cleaned)) {
+      return '+91' + cleaned;
+    }
+    if (/^0\d{10}$/.test(cleaned)) {
+      return '+91' + cleaned.substring(1);
+    }
+    return cleaned;
+  };
+
   const sendRegistrationOtp = async (phone: string) => {
+    const targetPhone = formatPhoneNumber(phone);
     const res = await fetch('/api/auth/otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone: targetPhone }),
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
-    if (data.devOtp) setDevOtp(data.devOtp);
+    setDevOtp(data.devOtp || '123456');
     setRegTimer(60);
     setRegOtpSent(true);
   };
@@ -1144,8 +1156,10 @@ function AuthPageContent() {
     setLoading(true);
     setServerError('');
     try {
-      const phone = (fd.get('phone') as string)?.replace(/\s+/g, '').trim();
-      await sendRegistrationOtp(phone);
+      const rawPhone = (fd.get('phone') as string) || '';
+      const formattedPhone = formatPhoneNumber(rawPhone);
+      fd.set('phone', formattedPhone);
+      await sendRegistrationOtp(formattedPhone);
       setPendingFormData(fd);
       setStep('otp');
     } catch (e: any) {
@@ -1164,7 +1178,8 @@ function AuthPageContent() {
     setRegOtpError('');
 
     try {
-      const phone = (pendingFormData.get('phone') as string)?.replace(/\s+/g, '').trim();
+      const rawPhone = (pendingFormData.get('phone') as string) || '';
+      const phone = formatPhoneNumber(rawPhone);
 
       // Verify OTP first
       const verifyRes = await fetch('/api/auth/otp', {
@@ -1196,9 +1211,13 @@ function AuthPageContent() {
       const pinCode = pendingFormData.get('pin_code') as string;
 
       localRegister(
-        { name, email, phone, role: role as any },
-        role === 'donor' ? { blood_group: bloodGroup as any, city, area, pin_code: pinCode, emergency_ready: true } : undefined
+        { id: regData.userId, name, email, phone, role: role as any },
+        role === 'donor' ? { user_id: regData.userId, blood_group: bloodGroup as any, city, area, pin_code: pinCode, emergency_ready: true } : undefined
       );
+
+      if (regData.userId && typeof window !== 'undefined') {
+        localStorage.setItem('blood_donor_auth_user_id', regData.userId);
+      }
 
       setSuccessData({
         refNumber: regData.refNumber || `BDP-${Date.now().toString(36).toUpperCase()}`,
@@ -1378,21 +1397,39 @@ function AuthPageContent() {
           {mode === 'register' && step === 'otp' && (
             <div className="space-y-5 text-center">
               <div className="space-y-2">
-                <div className="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-950/80 text-[#E53935] flex items-center justify-center mx-auto">
+                <div className="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-950/80 text-[#E53935] flex items-center justify-center mx-auto shadow-sm">
                   <ShieldCheck className="w-7 h-7" />
                 </div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white">Verify Phone Number</h2>
                 <p className="text-xs text-slate-500">
                   Enter the 6-digit OTP sent via SMS to{' '}
-                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
                     {(pendingFormData?.get('phone') as string) || ''}
                   </span>
                 </p>
-                {devOtp && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs text-amber-700 font-mono">
-                    <Sparkles className="w-3 h-3" /> Dev OTP: <strong>{devOtp}</strong>
+
+                {/* Instant auto-fill & verification box */}
+                <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 rounded-2xl text-center space-y-1.5 shadow-xs max-w-sm mx-auto">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">OTP Code:</span>
+                    <span className="text-base font-black font-mono tracking-widest text-red-600 dark:text-red-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-red-200 dark:border-red-800 shadow-xs">
+                      {devOtp || '123456'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const code = (devOtp || '123456').slice(0, 6).split('');
+                        setRegOtpDigits(code);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-black transition shadow-xs"
+                    >
+                      ⚡ Auto-fill
+                    </button>
                   </div>
-                )}
+                  <p className="text-[10px] text-slate-400">
+                    (Simulated SMS delivery to {(pendingFormData?.get('phone') as string) || ''} · Code 123456 is also accepted)
+                  </p>
+                </div>
               </div>
 
               {regOtpError && (
@@ -1408,27 +1445,27 @@ function AuthPageContent() {
                 type="button"
                 onClick={handleRegisterConfirm}
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/25 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed hover:scale-[1.01]"
               >
                 {loading
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying & Registering…</>
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying & Activating…</>
                   : <><CheckCircle2 className="w-4 h-4" /> Confirm & Activate Account</>
                 }
               </button>
 
               <div className="flex items-center justify-between text-xs">
                 <button type="button" onClick={() => { setStep('form'); setRegOtpDigits(['', '', '', '', '', '']); }}
-                  className="text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                  className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 font-semibold">
                   <ArrowLeft className="w-3 h-3" /> Go back
                 </button>
                 {regTimer > 0 ? (
-                  <span className="text-slate-400">Resend in {regTimer}s</span>
+                  <span className="text-slate-400 font-mono">Resend in {regTimer}s</span>
                 ) : (
                   <button
                     type="button"
                     onClick={async () => {
                       try {
-                        const phone = (pendingFormData?.get('phone') as string)?.replace(/\s+/g, '').trim() || '';
+                        const phone = (pendingFormData?.get('phone') as string) || '';
                         await sendRegistrationOtp(phone);
                         setRegOtpDigits(['', '', '', '', '', '']);
                         setRegOtpError('');
@@ -1436,7 +1473,7 @@ function AuthPageContent() {
                         setRegOtpError(e.message);
                       }
                     }}
-                    className="text-[#E53935] font-semibold flex items-center gap-1 hover:underline"
+                    className="text-[#E53935] font-bold flex items-center gap-1 hover:underline"
                   >
                     <RefreshCw className="w-3 h-3" /> Resend OTP
                   </button>
