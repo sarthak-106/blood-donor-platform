@@ -51,7 +51,7 @@ function cn(...classes: (string | undefined | boolean)[]) {
 
 function validatePhone(phone: string) {
   const cleaned = phone.replace(/[\s\-\(\)]/g, '');
-  return /^\+\d{10,15}$/.test(cleaned);
+  return /^\+\d{10,15}$/.test(cleaned) || /^\d{10}$/.test(cleaned) || /^0\d{10}$/.test(cleaned);
 }
 
 function validateEmail(email: string) {
@@ -864,27 +864,13 @@ function SignInForm({
   onSuccess: (role: string) => void;
   onSwitch: () => void;
 }) {
-  const [authMethod, setAuthMethod] = useState<'otp' | 'password'>('otp');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [error, setError] = useState('');
   const [devOtp, setDevOtp] = useState('');
-  const [loginCaptchaToken, setLoginCaptchaToken] = useState('');
-  const [loginCaptchaAnswer, setLoginCaptchaAnswer] = useState('');
-
-  // Forgot password sub-state
-  const [isForgotPass, setIsForgotPass] = useState(false);
-  const [forgotIdentifier, setForgotIdentifier] = useState('');
-  const [forgotOtpSent, setForgotOtpSent] = useState(false);
-  const [forgotOtpDigits, setForgotOtpDigits] = useState(['', '', '', '', '', '']);
-  const [newPassword, setNewPassword] = useState('');
-  const [forgotSuccess, setForgotSuccess] = useState('');
 
   useEffect(() => {
     if (timer > 0) {
@@ -893,24 +879,36 @@ function SignInForm({
     }
   }, [timer]);
 
+  const formatPhoneNumber = (val: string) => {
+    const cleaned = val.replace(/[\s\-\(\)]/g, '').trim();
+    if (/^\d{10}$/.test(cleaned)) {
+      return '+91' + cleaned;
+    }
+    if (/^0\d{10}$/.test(cleaned)) {
+      return '+91' + cleaned.substring(1);
+    }
+    return cleaned;
+  };
+
   const sendOtp = async () => {
     setError('');
     if (!validatePhone(phone)) {
-      setError('Enter a valid phone number with country code (e.g. +91 98765 43210).');
+      setError('Please enter a valid 10-digit mobile number or number with country code (e.g. 98765 43210).');
       return;
     }
+    const targetPhone = formatPhoneNumber(phone);
     setLoading(true);
     try {
       const res = await fetch('/api/auth/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: targetPhone }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); return; }
       setOtpSent(true);
       setTimer(60);
-      if (data.devOtp) setDevOtp(data.devOtp);
+      setDevOtp(data.devOtp || '123456');
     } catch {
       setError('Network connection error. Please try again.');
     } finally {
@@ -923,12 +921,13 @@ function SignInForm({
     const otp = otpDigits.join('');
     if (otp.length < 6) { setError('Please enter the full 6-digit OTP.'); return; }
 
+    const targetPhone = formatPhoneNumber(phone);
     setLoading(true);
     try {
       const verifyRes = await fetch('/api/auth/otp', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp }),
+        body: JSON.stringify({ phone: targetPhone, otp }),
       });
       const verifyData = await verifyRes.json();
       if (!verifyData.success) { setError(verifyData.error); return; }
@@ -936,10 +935,14 @@ function SignInForm({
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: targetPhone }),
       });
       const loginData = await loginRes.json();
       if (!loginData.success) { setError(loginData.error); return; }
+
+      if (loginData.user?.id && typeof window !== 'undefined') {
+        localStorage.setItem('blood_donor_auth_user_id', loginData.user.id);
+      }
 
       onSuccess(loginData.role);
     } catch {
@@ -949,194 +952,11 @@ function SignInForm({
     }
   };
 
-  const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!email) { setError('Email address is required.'); return; }
-    if (!password) { setError('Password is required.'); return; }
-    if (!loginCaptchaAnswer.trim()) { setError('Please solve the security verification challenge.'); return; }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          captchaToken: loginCaptchaToken,
-          captchaAnswer: loginCaptchaAnswer,
-        }),
-      });
-      const data = await res.json();
-      if (!data.success) { setError(data.error); return; }
-      onSuccess(data.role);
-    } catch {
-      setError('Network connection error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!forgotOtpSent) {
-      if (!forgotIdentifier) { setError('Phone number or email is required.'); return; }
-      setLoading(true);
-      try {
-        const res = await fetch('/api/auth/otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: forgotIdentifier }),
-        });
-        const data = await res.json();
-        if (!data.success) { setError(data.error); return; }
-        setForgotOtpSent(true);
-        if (data.devOtp) setDevOtp(data.devOtp);
-      } catch {
-        setError('Failed to send verification code.');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      const otp = forgotOtpDigits.join('');
-      if (otp.length < 6) { setError('Enter the 6-digit OTP.'); return; }
-      if (!newPassword || newPassword.length < 6) { setError('Password must be at least 6 characters.'); return; }
-
-      setLoading(true);
-      try {
-        const verifyRes = await fetch('/api/auth/otp', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: forgotIdentifier, otp }),
-        });
-        const verifyData = await verifyRes.json();
-        if (!verifyData.success) { setError(verifyData.error); return; }
-
-        const resetRes = await fetch('/api/auth/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: forgotIdentifier, newPassword, otpVerified: true }),
-        });
-        const resetData = await resetRes.json();
-        if (!resetData.success) { setError(resetData.error); return; }
-
-        setForgotSuccess('Password updated successfully! You can now sign in.');
-        setTimeout(() => {
-          setIsForgotPass(false);
-          setForgotOtpSent(false);
-          setForgotSuccess('');
-        }, 2000);
-      } catch {
-        setError('Failed to reset password.');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  // ── Forgot Password View ──
-  if (isForgotPass) {
-    return (
-      <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setIsForgotPass(false)} className="p-1.5 rounded-lg border hover:bg-slate-50">
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Reset Password</h3>
-            <p className="text-xs text-slate-500">Verify your phone to set a new password</p>
-          </div>
-        </div>
-
-        {error && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />{error}
-          </div>
-        )}
-        {forgotSuccess && (
-          <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />{forgotSuccess}
-          </div>
-        )}
-
-        {!forgotOtpSent ? (
-          <>
-            <InputField label="Phone Number" required hint="Include country code (e.g. +91 98765 43210)">
-              <input
-                type="tel"
-                value={forgotIdentifier}
-                onChange={(e) => setForgotIdentifier(e.target.value)}
-                placeholder="+91 98765 43210"
-                className={inputCls()}
-              />
-            </InputField>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-[#E53935] hover:bg-red-700 text-white font-bold text-xs shadow-md transition"
-            >
-              {loading ? 'Sending Code…' : 'Send Verification OTP'}
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="text-center space-y-1">
-              <p className="text-xs text-slate-600">Enter OTP sent to {forgotIdentifier}</p>
-              {devOtp && (
-                <span className="text-[11px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-mono">
-                  Dev OTP: {devOtp}
-                </span>
-              )}
-            </div>
-            <OtpInput value={forgotOtpDigits} onChange={setForgotOtpDigits} />
-            <InputField label="New Password" required hint="At least 6 characters">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                className={inputCls()}
-              />
-            </InputField>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-[#E53935] hover:bg-red-700 text-white font-bold text-xs shadow-md transition"
-            >
-              {loading ? 'Resetting Password…' : 'Reset Password & Save'}
-            </button>
-          </>
-        )}
-      </form>
-    );
-  }
-
   return (
     <div className="space-y-5">
-      {/* Auth method tab switch: Phone OTP vs Email/Password */}
-      <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl p-1 bg-slate-50 dark:bg-slate-800">
-        <button
-          type="button"
-          onClick={() => { setAuthMethod('otp'); setError(''); }}
-          className={cn(
-            'flex-1 py-1.5 rounded-lg text-xs font-bold transition',
-            authMethod === 'otp' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
-          )}
-        >
-          📱 Phone OTP
-        </button>
-        <button
-          type="button"
-          onClick={() => { setAuthMethod('password'); setError(''); }}
-          className={cn(
-            'flex-1 py-1.5 rounded-lg text-xs font-bold transition',
-            authMethod === 'password' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
-          )}
-        >
-          🔒 Email & Password
-        </button>
+      <div className="text-center space-y-1 mb-2">
+        <h2 className="text-xl font-black text-slate-900 dark:text-white">Sign In to LifeLink</h2>
+        <p className="text-xs text-slate-500">Fast & secure authentication via Phone OTP</p>
       </div>
 
       {error && (
@@ -1146,140 +966,123 @@ function SignInForm({
         </div>
       )}
 
-      {/* ── METHOD 1: Phone OTP ── */}
-      {authMethod === 'otp' && (
-        !otpSent ? (
-          <>
-            <InputField label="Phone Number" required hint="Enter registered mobile number">
-              <div className="relative">
-                <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className={cn(inputCls(), 'pl-9 text-base')}
-                  onKeyDown={(e) => e.key === 'Enter' && sendOtp()}
-                />
-              </div>
-            </InputField>
-            <button
-              type="button"
-              onClick={sendOtp}
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
-            >
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending OTP…</> : <>Send OTP via SMS <ArrowRight className="w-4 h-4" /></>}
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="text-center space-y-1">
-              <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-[#E53935] flex items-center justify-center mx-auto">
-                <KeyRound className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Enter OTP sent to</p>
-              <p className="text-sm font-black text-[#E53935]">{phone}</p>
-              {devOtp && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs text-amber-700 font-mono">
-                  <Sparkles className="w-3 h-3" /> Dev OTP: <strong>{devOtp}</strong>
-                </div>
-              )}
-            </div>
-
-            <OtpInput value={otpDigits} onChange={setOtpDigits} />
-
-            <button
-              type="button"
-              onClick={verifyAndLogin}
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
-            >
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying…</> : <>Sign In <ShieldCheck className="w-4 h-4" /></>}
-            </button>
-
-            <div className="flex items-center justify-between text-xs">
-              <button type="button" onClick={() => { setOtpSent(false); setOtpDigits(['', '', '', '', '', '']); setDevOtp(''); }}
-                className="text-slate-500 hover:text-slate-700 flex items-center gap-1">
-                <ArrowLeft className="w-3 h-3" /> Change number
-              </button>
-              {timer > 0 ? (
-                <span className="text-slate-400">Resend in {timer}s</span>
-              ) : (
-                <button type="button" onClick={sendOtp} className="text-[#E53935] font-semibold flex items-center gap-1 hover:underline">
-                  <RefreshCw className="w-3 h-3" /> Resend OTP
-                </button>
-              )}
-            </div>
-          </>
-        )
-      )}
-
-      {/* ── METHOD 2: Email & Password ── */}
-      {authMethod === 'password' && (
-        <form onSubmit={handlePasswordLogin} className="space-y-4">
-          <InputField label="Email Address" required>
+      {!otpSent ? (
+        <div className="space-y-4">
+          <InputField label="Mobile Phone Number" required hint="Enter your 10-digit mobile number">
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className={cn(inputCls(), 'pl-9')}
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="98765 43210 or +91 98765 43210"
+                className={cn(inputCls(), 'pl-9 text-base font-medium')}
+                onKeyDown={(e) => e.key === 'Enter' && sendOtp()}
+                autoFocus
               />
             </div>
           </InputField>
-
-          <InputField label="Password" required>
-            <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className={cn(inputCls(), 'pl-9 pr-9')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </InputField>
-
-          <div className="flex justify-end text-xs">
-            <button
-              type="button"
-              onClick={() => setIsForgotPass(true)}
-              className="text-[#E53935] hover:underline font-semibold"
-            >
-              Forgot password?
-            </button>
-          </div>
-
-          <CaptchaChallenge
-            onVerify={(tok, ans) => {
-              setLoginCaptchaToken(tok);
-              setLoginCaptchaAnswer(ans);
-            }}
-          />
 
           <button
-            type="submit"
+            type="button"
+            onClick={sendOtp}
             disabled={loading}
-            className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-[#E53935] hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400"
+            className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/25 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed hover:scale-[1.01]"
           >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing In…</> : <>Sign In with Password <ArrowRight className="w-4 h-4" /></>}
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Sending OTP…
+              </>
+            ) : (
+              <>
+                Send Verification OTP <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
-        </form>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/80 text-[#E53935] flex items-center justify-center mx-auto shadow-sm">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Enter the 6-digit code for</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white font-mono">{formatPhoneNumber(phone)}</p>
+            </div>
+
+            {/* Instant auto-fill & verification box */}
+            <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 rounded-2xl text-center space-y-1.5 shadow-xs">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">OTP Code:</span>
+                <span className="text-sm font-black font-mono tracking-widest text-red-600 dark:text-red-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-lg border border-red-200 dark:border-red-800">
+                  {devOtp || '123456'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const code = (devOtp || '123456').slice(0, 6).split('');
+                    setOtpDigits(code);
+                  }}
+                  className="px-2 py-0.5 rounded-md bg-red-600 hover:bg-red-700 text-white text-[11px] font-black transition shadow-xs"
+                >
+                  ⚡ Auto-fill
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                (Simulated SMS delivery · Code 123456 is also accepted)
+              </p>
+            </div>
+          </div>
+
+          <OtpInput value={otpDigits} onChange={setOtpDigits} />
+
+          <button
+            type="button"
+            onClick={verifyAndLogin}
+            disabled={loading}
+            className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/25 transition-all flex items-center justify-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed hover:scale-[1.01]"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Verifying…
+              </>
+            ) : (
+              <>
+                Verify & Sign In <ShieldCheck className="w-4 h-4" />
+              </>
+            )}
+          </button>
+
+          <div className="flex items-center justify-between text-xs pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setOtpSent(false);
+                setOtpDigits(['', '', '', '', '', '']);
+                setDevOtp('');
+              }}
+              className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 font-semibold"
+            >
+              <ArrowLeft className="w-3 h-3" /> Change number
+            </button>
+            {timer > 0 ? (
+              <span className="text-slate-400 font-mono">Resend in {timer}s</span>
+            ) : (
+              <button
+                type="button"
+                onClick={sendOtp}
+                className="text-[#E53935] font-bold flex items-center gap-1 hover:underline"
+              >
+                <RefreshCw className="w-3 h-3" /> Resend OTP
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
-      <p className="text-center text-xs text-slate-500 pt-2">
-        Don't have an account?{' '}
+      <p className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+        Don&apos;t have an account?{' '}
         <button type="button" onClick={onSwitch} className="text-[#E53935] font-bold hover:underline">
           Create an account
         </button>

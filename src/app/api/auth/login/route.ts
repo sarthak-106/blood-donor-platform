@@ -35,19 +35,36 @@ export async function POST(req: NextRequest) {
     let user = null;
 
     if (phone) {
-      const normalizedPhone = String(phone).replace(/\s+/g, '').trim();
+      let normalizedPhone = String(phone).replace(/[\s\-\(\)]/g, '').trim();
+      if (/^\d{10}$/.test(normalizedPhone)) {
+        normalizedPhone = '+91' + normalizedPhone;
+      } else if (/^0\d{10}$/.test(normalizedPhone)) {
+        normalizedPhone = '+91' + normalizedPhone.substring(1);
+      }
+
       if (!/^\+\d{10,15}$/.test(normalizedPhone)) {
         return NextResponse.json(
-          { success: false, error: 'Phone number must include country code (e.g. +91 98765 43210).' },
+          { success: false, error: 'Enter a valid 10-digit mobile number or number with country code (e.g. +91 98765 43210).' },
           { status: 400 }
         );
       }
       user = await prisma.user.findFirst({ where: { phone: normalizedPhone } });
       if (!user) {
-        return NextResponse.json(
-          { success: false, error: 'No account registered with this phone number. Please create an account.' },
-          { status: 404 }
-        );
+        // Auto-provision verified phone number into active user session
+        const nowIso = new Date().toISOString();
+        const cleanDigits = normalizedPhone.replace(/\D/g, '');
+        user = await prisma.user.create({
+          data: {
+            id: `user-${Date.now()}`,
+            name: `User ${normalizedPhone.slice(-4)}`,
+            email: `user_${cleanDigits}@lifelink.internal`,
+            phone: normalizedPhone,
+            role: 'recipient',
+            verification_status: 'Verified',
+            created_at: nowIso,
+            updated_at: nowIso,
+          },
+        });
       }
     } else if (email) {
       const normalizedEmail = String(email).toLowerCase().trim();
