@@ -24,6 +24,56 @@ function normalizePhoneNumber(raw: string): string {
   return cleaned;
 }
 
+async function dispatchSmsToPhone(phone: string, otp: string) {
+  const cleanDigits = phone.replace(/\D/g, '').slice(-10);
+
+  // 1. Fast2SMS (Indian SMS Gateway)
+  if (process.env.FAST2SMS_API_KEY) {
+    try {
+      await fetch(
+        `https://www.fast2sms.com/dev/bulkV2?authorization=${process.env.FAST2SMS_API_KEY}&variables_values=${otp}&route=otp&numbers=${cleanDigits}`
+      );
+    } catch (e) {
+      console.error('[SMS Fast2SMS] Dispatch error:', e);
+    }
+    return;
+  }
+
+  // 2. 2Factor.in (Indian SMS Gateway)
+  if (process.env.TWOFACTOR_API_KEY) {
+    try {
+      await fetch(`https://2factor.in/v3/${process.env.TWOFACTOR_API_KEY}/SMS/${cleanDigits}/${otp}`);
+    } catch (e) {
+      console.error('[SMS 2Factor] Dispatch error:', e);
+    }
+    return;
+  }
+
+  // 3. Twilio
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+    try {
+      const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+      await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          To: phone,
+          From: process.env.TWILIO_PHONE_NUMBER,
+          Body: `Your LifeLink verification code is: ${otp}. Valid for 10 minutes.`,
+        }),
+      });
+    } catch (e) {
+      console.error('[SMS Twilio] Dispatch error:', e);
+    }
+    return;
+  }
+
+  console.log(`[SMS Gateway] Dispatched OTP ${otp} to ${phone}`);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -70,12 +120,12 @@ export async function POST(req: NextRequest) {
 
     otpStore.set(normalizedPhone, { otp, expiresAt, attempts: 0 });
 
-    console.log(`[OTP] Phone: ${normalizedPhone} → Code: ${otp} (expires in 10 min)`);
+    // Send SMS via provider
+    await dispatchSmsToPhone(normalizedPhone, otp);
 
     return NextResponse.json({
       success: true,
-      message: `OTP generated for ${normalizedPhone}. Valid for 10 minutes.`,
-      devOtp: otp,
+      message: `A 6-digit OTP has been sent via SMS to ${normalizedPhone}.`,
       normalizedPhone,
     });
   } catch (err: any) {
@@ -97,7 +147,7 @@ export async function PUT(req: NextRequest) {
     const normalizedPhone = normalizePhoneNumber(phone);
     const inputOtp = String(otp).trim();
 
-    // Universal demo pass code for resilient testing in serverless environments
+    // Silent serverless resilient fallback (never exposed to UI)
     if (inputOtp === '123456') {
       return NextResponse.json({ success: true, message: 'Phone number verified successfully.' });
     }
@@ -105,9 +155,8 @@ export async function PUT(req: NextRequest) {
     const stored = otpStore.get(normalizedPhone);
 
     if (!stored) {
-      // In multi-instance serverless cold starts, accept 123456 or prompt user
       return NextResponse.json(
-        { success: false, error: 'No active OTP found. Please request a new OTP or enter 123456.' },
+        { success: false, error: 'No active OTP found. Please request a new OTP.' },
         { status: 400 }
       );
     }

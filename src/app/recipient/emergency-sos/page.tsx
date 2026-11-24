@@ -59,7 +59,6 @@ export default function EmergencySOSPage() {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpMessage, setOtpMessage] = useState<string | null>(null);
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   // CAPTCHA Challenge State
   const [captchaToken, setCaptchaToken] = useState<string>('');
@@ -139,8 +138,7 @@ export default function EmergencySOSPage() {
       const data = await res.json();
       if (data.success) {
         setIsOtpSent(true);
-        setOtpMessage(`OTP sent to ${cleaned}. Valid for 5 minutes.`);
-        if (data.devOtp) setDevOtp(data.devOtp);
+        setOtpMessage(`A 6-digit verification code has been dispatched via SMS to ${cleaned}.`);
       } else {
         setOtpError(data.error || 'Failed to send OTP. Please try again.');
       }
@@ -622,11 +620,6 @@ export default function EmergencySOSPage() {
                             Resend
                           </button>
                         </div>
-                        {devOtp && (
-                          <p className="text-[11px] font-mono text-yellow-300">
-                            Development Demo OTP: <strong>{devOtp}</strong>
-                          </p>
-                        )}
                       </div>
                     )}
 

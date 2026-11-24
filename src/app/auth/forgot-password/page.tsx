@@ -11,7 +11,6 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<'input' | 'otp' | 'success'>('input');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [devOtp, setDevOtp] = useState('');
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,6 @@ export default function ForgotPasswordPage() {
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); return; }
-      if (data.devOtp) setDevOtp(data.devOtp);
       setStep('otp');
     } catch {
       setError('Network error. Please try again.');
@@ -134,12 +132,7 @@ export default function ForgotPasswordPage() {
         {step === 'otp' && (
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="text-center text-xs text-slate-500 space-y-1">
-              <p>Enter 6-digit OTP sent to <strong className="text-slate-800 dark:text-slate-200">{identifier}</strong></p>
-              {devOtp && (
-                <p className="font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded inline-block">
-                  Dev OTP: {devOtp}
-                </p>
-              )}
+              <p>Enter the 6-digit verification code sent via SMS to <strong className="text-slate-800 dark:text-slate-200">{identifier}</strong></p>
             </div>
 
             <div>
@@ -154,7 +147,7 @@ export default function ForgotPasswordPage() {
                   maxLength={6}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="123456"
+                  placeholder="••••••"
                   className="w-full pl-9 pr-3 py-2.5 text-xs font-mono font-bold tracking-widest rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-medical-red focus:outline-none"
                 />
               </div>

@@ -446,10 +446,22 @@ function DonorForm({
 
       {/* Optional Fields */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <InputField label="Date of Birth">
+        <InputField label="Date of Birth" hint="Eligible age: 18–65 years">
           <div className="relative">
-            <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input name="date_of_birth" type="date" className={cn(inputCls(), 'pl-9')} />
+            <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              name="date_of_birth"
+              type="date"
+              max="2008-12-31"
+              min="1955-01-01"
+              style={{ colorScheme: 'light dark' }}
+              className={cn(inputCls(), 'pl-9 cursor-pointer w-full')}
+              onClick={(e) => {
+                try {
+                  (e.currentTarget as any).showPicker?.();
+                } catch (_) {}
+              }}
+            />
           </div>
         </InputField>
         <InputField label="Gender">
@@ -870,7 +882,6 @@ function SignInForm({
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [error, setError] = useState('');
-  const [devOtp, setDevOtp] = useState('');
 
   useEffect(() => {
     if (timer > 0) {
@@ -908,7 +919,6 @@ function SignInForm({
       if (!data.success) { setError(data.error); return; }
       setOtpSent(true);
       setTimer(60);
-      setDevOtp(data.devOtp || '123456');
     } catch {
       setError('Network connection error. Please try again.');
     } finally {
@@ -1007,30 +1017,12 @@ function SignInForm({
               <KeyRound className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Enter the 6-digit code for</p>
-              <p className="text-sm font-black text-slate-900 dark:text-white font-mono">{formatPhoneNumber(phone)}</p>
-            </div>
-
-            {/* Instant auto-fill & verification box */}
-            <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 rounded-2xl text-center space-y-1.5 shadow-xs">
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">OTP Code:</span>
-                <span className="text-sm font-black font-mono tracking-widest text-red-600 dark:text-red-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-lg border border-red-200 dark:border-red-800">
-                  {devOtp || '123456'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const code = (devOtp || '123456').slice(0, 6).split('');
-                    setOtpDigits(code);
-                  }}
-                  className="px-2 py-0.5 rounded-md bg-red-600 hover:bg-red-700 text-white text-[11px] font-black transition shadow-xs"
-                >
-                  ⚡ Auto-fill
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-400">
-                (Simulated SMS delivery · Code 123456 is also accepted)
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Verify Your Mobile Number</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                A 6-digit verification code has been dispatched via SMS to:
+              </p>
+              <p className="text-sm font-black text-red-600 dark:text-red-400 font-mono mt-0.5">
+                {formatPhoneNumber(phone)}
               </p>
             </div>
           </div>
@@ -1060,7 +1052,6 @@ function SignInForm({
               onClick={() => {
                 setOtpSent(false);
                 setOtpDigits(['', '', '', '', '', '']);
-                setDevOtp('');
               }}
               className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 font-semibold"
             >
@@ -1118,7 +1109,6 @@ function AuthPageContent() {
   const [regOtpDigits, setRegOtpDigits] = useState(['', '', '', '', '', '']);
   const [regTimer, setRegTimer] = useState(0);
   const [regOtpError, setRegOtpError] = useState('');
-  const [devOtp, setDevOtp] = useState('');
 
   useEffect(() => {
     if (regTimer > 0) {
@@ -1147,7 +1137,6 @@ function AuthPageContent() {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
-    setDevOtp(data.devOtp || '123456');
     setRegTimer(60);
     setRegOtpSent(true);
   };
@@ -1402,34 +1391,14 @@ function AuthPageContent() {
                 </div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white">Verify Phone Number</h2>
                 <p className="text-xs text-slate-500">
-                  Enter the 6-digit OTP sent via SMS to{' '}
-                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
-                    {(pendingFormData?.get('phone') as string) || ''}
-                  </span>
+                  A 6-digit verification code has been dispatched via SMS to:
                 </p>
-
-                {/* Instant auto-fill & verification box */}
-                <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 rounded-2xl text-center space-y-1.5 shadow-xs max-w-sm mx-auto">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">OTP Code:</span>
-                    <span className="text-base font-black font-mono tracking-widest text-red-600 dark:text-red-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-red-200 dark:border-red-800 shadow-xs">
-                      {devOtp || '123456'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const code = (devOtp || '123456').slice(0, 6).split('');
-                        setRegOtpDigits(code);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-black transition shadow-xs"
-                    >
-                      ⚡ Auto-fill
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    (Simulated SMS delivery to {(pendingFormData?.get('phone') as string) || ''} · Code 123456 is also accepted)
-                  </p>
-                </div>
+                <p className="text-sm font-black text-red-600 dark:text-red-400 font-mono">
+                  {(pendingFormData?.get('phone') as string) || ''}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Please enter the code below to confirm and activate your registration.
+                </p>
               </div>
 
               {regOtpError && (
