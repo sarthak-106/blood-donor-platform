@@ -882,6 +882,7 @@ function SignInForm({
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [error, setError] = useState('');
+  const [gatewayConfigured, setGatewayConfigured] = useState(true);
 
   useEffect(() => {
     if (timer > 0) {
@@ -917,6 +918,9 @@ function SignInForm({
       });
       const data = await res.json();
       if (!data.success) { setError(data.error); return; }
+      if (data.gatewayConfigured !== undefined) {
+        setGatewayConfigured(data.gatewayConfigured);
+      }
       setOtpSent(true);
       setTimer(60);
     } catch {
@@ -1025,6 +1029,21 @@ function SignInForm({
                 {formatPhoneNumber(phone)}
               </p>
             </div>
+
+            {!gatewayConfigured && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-left space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                  <span>⚠️ SMS Provider Not Connected</span>
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                  Real cellular SMS delivery requires an SMS Gateway API key (Fast2SMS or Twilio) configured in Vercel environment variables.
+                </p>
+                <div className="flex items-center justify-between bg-amber-100/70 dark:bg-amber-900/40 px-2.5 py-1.5 rounded-lg border border-amber-300/60 dark:border-amber-700/60">
+                  <span className="text-[11px] text-amber-900 dark:text-amber-200 font-medium">Bypass code for testing:</span>
+                  <span className="font-mono font-black text-amber-900 dark:text-amber-100 text-xs tracking-wider">123456</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <OtpInput value={otpDigits} onChange={setOtpDigits} />
@@ -1109,6 +1128,7 @@ function AuthPageContent() {
   const [regOtpDigits, setRegOtpDigits] = useState(['', '', '', '', '', '']);
   const [regTimer, setRegTimer] = useState(0);
   const [regOtpError, setRegOtpError] = useState('');
+  const [gatewayConfigured, setGatewayConfigured] = useState(true);
 
   useEffect(() => {
     if (regTimer > 0) {
@@ -1137,6 +1157,9 @@ function AuthPageContent() {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
+    if (data.gatewayConfigured !== undefined) {
+      setGatewayConfigured(data.gatewayConfigured);
+    }
     setRegTimer(60);
     setRegOtpSent(true);
   };
@@ -1399,6 +1422,21 @@ function AuthPageContent() {
                 <p className="text-[11px] text-slate-400">
                   Please enter the code below to confirm and activate your registration.
                 </p>
+
+                {!gatewayConfigured && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-left space-y-1.5 text-xs max-w-sm mx-auto">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                      <span>⚠️ SMS Provider Not Connected</span>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                      Real cellular SMS delivery requires an SMS Gateway API key (Fast2SMS or Twilio) configured in Vercel environment variables.
+                    </p>
+                    <div className="flex items-center justify-between bg-amber-100/70 dark:bg-amber-900/40 px-2.5 py-1.5 rounded-lg border border-amber-300/60 dark:border-amber-700/60">
+                      <span className="text-[11px] text-amber-900 dark:text-amber-200 font-medium">Bypass code for testing:</span>
+                      <span className="font-mono font-black text-amber-900 dark:text-amber-100 text-xs tracking-wider">123456</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {regOtpError && (

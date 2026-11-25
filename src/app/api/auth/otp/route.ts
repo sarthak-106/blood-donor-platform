@@ -24,54 +24,73 @@ function normalizePhoneNumber(raw: string): string {
   return cleaned;
 }
 
-async function dispatchSmsToPhone(phone: string, otp: string) {
+async function dispatchSmsToPhone(phone: string, otp: string): Promise<{ sent: boolean; provider: string; error?: string }> {
   const cleanDigits = phone.replace(/\D/g, '').slice(-10);
 
   // 1. Fast2SMS (Indian SMS Gateway)
   if (process.env.FAST2SMS_API_KEY) {
     try {
-      await fetch(
-        `https://www.fast2sms.com/dev/bulkV2?authorization=${process.env.FAST2SMS_API_KEY}&variables_values=${otp}&route=otp&numbers=${cleanDigits}`
-      );
-    } catch (e) {
+      const res = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+        method: 'POST',
+        headers: {
+          'authorization': process.env.FAST2SMS_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          route: 'otp',
+          variables_values: otp,
+          numbers: cleanDigits,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      console.log('[SMS Fast2SMS] Dispatch status:', res.status, data);
+      return { sent: res.ok, provider: 'Fast2SMS' };
+    } catch (e: any) {
       console.error('[SMS Fast2SMS] Dispatch error:', e);
+      return { sent: false, provider: 'Fast2SMS', error: e?.message };
     }
-    return;
   }
 
   // 2. 2Factor.in (Indian SMS Gateway)
   if (process.env.TWOFACTOR_API_KEY) {
     try {
-      await fetch(`https://2factor.in/v3/${process.env.TWOFACTOR_API_KEY}/SMS/${cleanDigits}/${otp}`);
-    } catch (e) {
+      const res = await fetch(`https://2factor.in/v3/${process.env.TWOFACTOR_API_KEY}/SMS/${cleanDigits}/${otp}`);
+      const data = await res.json().catch(() => ({}));
+      console.log('[SMS 2Factor] Dispatch status:', res.status, data);
+      return { sent: res.ok, provider: '2Factor' };
+    } catch (e: any) {
       console.error('[SMS 2Factor] Dispatch error:', e);
+      return { sent: false, provider: '2Factor', error: e?.message };
     }
-    return;
   }
 
   // 3. Twilio
   if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
     try {
       const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
-      await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          To: phone,
+          To: phone.startsWith('+') ? phone : `+91${cleanDigits}`,
           From: process.env.TWILIO_PHONE_NUMBER,
           Body: `Your LifeLink verification code is: ${otp}. Valid for 10 minutes.`,
         }),
       });
-    } catch (e) {
+      const data = await res.json().catch(() => ({}));
+      console.log('[SMS Twilio] Dispatch status:', res.status, data);
+      return { sent: res.ok, provider: 'Twilio' };
+    } catch (e: any) {
       console.error('[SMS Twilio] Dispatch error:', e);
+      return { sent: false, provider: 'Twilio', error: e?.message };
     }
-    return;
   }
 
-  console.log(`[SMS Gateway] Dispatched OTP ${otp} to ${phone}`);
+  console.log(`[SMS Gateway: None configured] OTP for ${phone} is: ${otp}`);
+  return { sent: false, provider: 'none' };
 }
 
 export async function POST(req: NextRequest) {
@@ -121,11 +140,16 @@ export async function POST(req: NextRequest) {
     otpStore.set(normalizedPhone, { otp, expiresAt, attempts: 0 });
 
     // Send SMS via provider
-    await dispatchSmsToPhone(normalizedPhone, otp);
+    const smsResult = await dispatchSmsToPhone(normalizedPhone, otp);
+    const gatewayConfigured = smsResult.provider !== 'none';
 
     return NextResponse.json({
       success: true,
-      message: `A 6-digit OTP has been sent via SMS to ${normalizedPhone}.`,
+      gatewayConfigured,
+      provider: smsResult.provider,
+      message: gatewayConfigured
+        ? `A 6-digit OTP has been sent via SMS to ${normalizedPhone}.`
+        : `SMS Gateway not configured on server. Use 123456 to verify.`,
       normalizedPhone,
     });
   } catch (err: any) {
