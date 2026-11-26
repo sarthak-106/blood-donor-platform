@@ -28,12 +28,13 @@ User question: "${clinicalQuestion}"
 
 Provide a concise, helpful 2-3 sentence answer following the Indian National Blood Transfusion Council (NBTC) guidelines. Emphasize that lab crossmatching is mandatory before transfusion.`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
+        const interaction = await ai.interactions.create({
+          model: 'gemini-3.8-flash',
+          store: false,
+          input: prompt,
         });
 
-        aiAdvice = response.text || null;
+        aiAdvice = interaction.output_text || null;
       } catch (err: any) {
         console.warn('Gemini advice generation skipped:', err.message);
       }

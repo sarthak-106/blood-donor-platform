@@ -77,8 +77,8 @@ export function fallbackHeuristicAnalysis(fileName: string = ''): BloodReportAna
 }
 
 /**
- * Uses Google Gemini AI Vision (gemini-2.5-flash / gemini-1.5-flash) to extract
- * ABO blood grouping, Rh status, and clinical requisition details.
+ * Uses Google Gemini AI (gemini-3.8-flash) via the @google/genai Interactions API
+ * to extract ABO blood grouping, Rh status, and clinical requisition details from images or PDFs.
  */
 export async function analyzeBloodReportWithGemini(
   base64Data: string,
@@ -93,46 +93,73 @@ export async function analyzeBloodReportWithGemini(
   }
 
   const prompt = `You are an expert clinical laboratory pathologist analyzing a medical document for an Indian blood bank transfusion registry.
-The image provided is a blood test report, donor card, hospital requisition slip, or pathology certificate.
+The attached file is a blood test report, donor card, hospital requisition slip, or pathology certificate.
 
-Examine the image carefully and extract the blood group information in JSON format with exactly the following keys:
-{
-  "bloodGroup": "<MUST be exactly one of: 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'>",
-  "confidence": <integer between 60 and 99 indicating percentage confidence>,
-  "patientName": "<string of patient or donor name if legible, or null>",
-  "hospitalOrLab": "<string of hospital, clinic, or diagnostic lab name if legible, or null>",
-  "testDate": "<string of test/requisition date YYYY-MM-DD or DD/MM/YYYY if legible, or null>",
-  "antigensDetected": ["<list of strings describing antigens found, e.g. 'Anti-A Agglutination Positive', 'Rh(D) Positive'>"],
-  "extractedSummary": "<brief 1-2 sentence medical summary of the report finding>"
-}
+Examine the document carefully and extract the blood group information into a JSON object with:
+- "bloodGroup": one of 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
+- "confidence": integer between 60 and 99 indicating percentage confidence
+- "patientName": patient or donor name if legible, or null
+- "hospitalOrLab": hospital, clinic, or diagnostic lab name if legible, or null
+- "testDate": test/requisition date YYYY-MM-DD or DD/MM/YYYY if legible, or null
+- "antigensDetected": list of strings describing antigens found (e.g. 'Anti-A Agglutination Positive', 'Rh(D) Positive')
+- "extractedSummary": brief 1-2 sentence medical summary of the report finding
 
-CRITICAL RULES:
-1. Respond with ONLY the raw valid JSON object. Do not wrap in markdown quotes or code blocks.
-2. If blood group cannot be determined with certainty, choose the most probable standard ABO/Rh group from the visible indicators.
-3. Keep patient details compliant with medical confidentiality.`;
+If blood group cannot be determined with certainty, choose the most probable standard ABO/Rh group from the visible indicators and keep patient details compliant with medical confidentiality.`;
+
+  const normalizedMime = (mimeType || 'image/jpeg').toLowerCase();
+  const isPdf = normalizedMime === 'application/pdf';
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: mimeType || 'image/jpeg',
-                data: base64Data,
-              },
-            },
-          ],
-        },
+    const mediaPart = isPdf
+      ? {
+          type: 'document' as const,
+          data: base64Data,
+          mime_type: 'application/pdf' as const,
+        }
+      : {
+          type: 'image' as const,
+          data: base64Data,
+          mime_type: normalizedMime,
+        };
+
+    const interaction = await ai.interactions.create({
+      model: 'gemini-3.8-flash',
+      store: false,
+      input: [
+        { type: 'text', text: prompt },
+        mediaPart,
       ],
+      response_format: {
+        type: 'text',
+        mime_type: 'application/json',
+        schema: {
+          type: 'object',
+          properties: {
+            bloodGroup: {
+              type: 'string',
+              enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+            },
+            confidence: { type: 'integer' },
+            patientName: { type: ['string', 'null'] },
+            hospitalOrLab: { type: ['string', 'null'] },
+            testDate: { type: ['string', 'null'] },
+            antigensDetected: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            extractedSummary: { type: 'string' },
+          },
+          required: ['bloodGroup', 'confidence', 'antigensDetected', 'extractedSummary'],
+        },
+      },
     });
 
-    const responseText = response.text?.trim() || '';
-    // Clean up potential markdown code fence
-    const cleanJson = responseText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    const responseText = (interaction.output_text || '').trim();
+    const cleanJson = responseText
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
     const parsed = JSON.parse(cleanJson);
 
     // Validate blood group
@@ -150,9 +177,9 @@ CRITICAL RULES:
       antigensDetected: Array.isArray(parsed.antigensDetected) && parsed.antigensDetected.length > 0
         ? parsed.antigensDetected
         : [`ABO Group: ${validatedGroup}`, 'Rh (D) factor verified'],
-      extractedSummary: parsed.extractedSummary || `Verified ${validatedGroup} blood profile via Google Gemini Vision AI.`,
+      extractedSummary: parsed.extractedSummary || `Verified ${validatedGroup} blood profile via Google Gemini AI.`,
       source: 'google_gemini_ai',
-      disclaimer: 'Clinical AI document analysis by Google Gemini. Serological cross-match at blood centre mandatory before patient transfusion.',
+      disclaimer: 'AI-Generated Screening Result (Google Gemini): This automated analysis is for informational assistance only and does NOT constitute a medical diagnosis. Certified laboratory serological cross-matching is mandatory prior to any transfusion.',
     };
   } catch (error: any) {
     console.error('[Gemini AI] Error analyzing blood report, falling back to heuristic:', error.message);

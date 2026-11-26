@@ -78,46 +78,12 @@ export default function BloodGroupGuidePage() {
     };
   };
 
-  const processFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      alert('Please upload an image (JPG, PNG, WEBP) or PDF file.');
-      return;
-    }
-
-    setUploadedFile(file);
-    setScanResult(null);
-
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => setPreviewUrl(e.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, []);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-  };
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
-    },
-    [processFile]
-  );
-
-  const handleAnalyze = async () => {
-    if (!uploadedFile) return;
+  const analyzeFile = useCallback(async (file: File) => {
     setIsAnalyzing(true);
 
     try {
       const formData = new FormData();
-      formData.append('file', uploadedFile);
+      formData.append('file', file);
 
       const res = await fetch('/api/ai/analyze-report', {
         method: 'POST',
@@ -136,31 +102,77 @@ export default function BloodGroupGuidePage() {
           confidence: data.confidence,
           antigensDetected: data.antigensDetected || [],
           extractedText: data.extractedSummary || `Report read successfully: ABO ${data.bloodGroup}`,
-          fileName: uploadedFile.name,
+          fileName: file.name,
           patientName: data.patientName,
           hospitalOrLab: data.hospitalOrLab,
           testDate: data.testDate,
           source: data.source,
           disclaimer: data.disclaimer,
         });
+        if (ALL_BLOOD_GROUPS.includes(data.bloodGroup)) {
+          setSelectedReferenceGroup(data.bloodGroup);
+        }
       } else {
         throw new Error(json.error || 'Failed to analyze document');
       }
     } catch (err) {
       console.warn('Network or API failure, engaging fallback document parser:', err);
-      const { group, confidence, antigens } = detectBloodGroupFromFile(uploadedFile);
+      const { group, confidence, antigens } = detectBloodGroupFromFile(file);
       setScanResult({
         bloodGroup: group,
         confidence,
         antigensDetected: antigens,
-        extractedText: `Document: ${uploadedFile.name} | Size: ${(uploadedFile.size / 1024).toFixed(1)} KB | Extracted: ${group}`,
-        fileName: uploadedFile.name,
+        extractedText: `Document: ${file.name} | Size: ${(file.size / 1024).toFixed(1)} KB | Extracted: ${group}`,
+        fileName: file.name,
         source: 'fallback_heuristic',
+        disclaimer: 'AI-Assisted Screening Disclaimer: Automated document analysis is for informational assistance only. Certified laboratory serological cross-matching is mandatory before any transfusion.',
       });
+      setSelectedReferenceGroup(group);
     } finally {
       setIsAnalyzing(false);
       confetti({ particleCount: 75, spread: 60, origin: { y: 0.6 } });
     }
+  }, []);
+
+  const processFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      alert('Please upload an image (JPG, PNG, WEBP) or PDF file.');
+      return;
+    }
+
+    setUploadedFile(file);
+    setScanResult(null);
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewUrl(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setPreviewUrl(null);
+    }
+
+    // Automatically trigger Gemini AI analysis immediately on file drop/selection
+    void analyzeFile(file);
+  }, [analyzeFile]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile]
+  );
+
+  const handleAnalyze = async () => {
+    if (!uploadedFile) return;
+    await analyzeFile(uploadedFile);
   };
 
   const handleClear = () => {
@@ -339,22 +351,22 @@ export default function BloodGroupGuidePage() {
                 </button>
               </div>
 
-              {/* Action button */}
+              {/* Action button / Live Gemini Analysis Progress */}
               {!scanResult && (
                 <button
                   onClick={handleAnalyze}
                   disabled={isAnalyzing}
-                  className="w-full py-3 rounded-xl bg-medical-red hover:bg-red-700 disabled:opacity-60 text-white font-bold text-xs shadow-md transition flex items-center justify-center space-x-2"
+                  className="w-full py-3 rounded-xl bg-medical-red hover:bg-red-700 disabled:opacity-75 text-white font-bold text-xs shadow-md transition flex items-center justify-center space-x-2"
                 >
                   {isAnalyzing ? (
                     <>
                       <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      <span>Reading Pathology Document...</span>
+                      <span>Analyzing Document with Gemini AI...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Read Document Text</span>
+                      <span>Re-analyze with Gemini AI</span>
                     </>
                   )}
                 </button>
@@ -364,12 +376,22 @@ export default function BloodGroupGuidePage() {
 
           {/* Scan Result Output */}
           {scanResult && (
-            <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl p-5 space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    Extracted Blood Group ({scanResult.confidence}% OCR Match)
+                    Extracted Blood Group ({scanResult.confidence}% Confidence)
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      scanResult.source === 'google_gemini_ai'
+                        ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    {scanResult.source === 'google_gemini_ai' ? 'Gemini AI Vision' : 'Automated Parser'}
                   </span>
                 </div>
                 <BloodGroupBadge bloodGroup={scanResult.bloodGroup} size="sm" />
@@ -398,9 +420,34 @@ export default function BloodGroupGuidePage() {
                 </div>
               )}
 
+              {scanResult.antigensDetected && scanResult.antigensDetected.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {scanResult.antigensDetected.map((antigen, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-900 text-[10px] font-semibold text-slate-700 dark:text-slate-300 border border-emerald-200 dark:border-emerald-900/50"
+                    >
+                      {antigen}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-300 border border-emerald-100 dark:border-emerald-900/40">
-                <span className="font-bold text-slate-900 dark:text-white block mb-0.5 text-[11px]">Document Findings:</span>
+                <span className="font-bold text-slate-900 dark:text-white block mb-0.5 text-[11px]">Gemini AI Document Summary:</span>
                 {scanResult.extractedText}
+              </div>
+
+              {/* AI Disclaimer Box */}
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/70 flex items-start space-x-2 text-[11px] text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block text-amber-950 dark:text-amber-100">AI Analysis Disclaimer</span>
+                  <span>
+                    {scanResult.disclaimer ||
+                      'AI-Generated Screening Result (Google Gemini): This automated analysis is for informational assistance only and does NOT replace certified laboratory serological cross-matching prior to any transfusion.'}
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-1">
