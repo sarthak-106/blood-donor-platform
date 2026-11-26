@@ -575,9 +575,9 @@ function DonorForm({
             className="mt-0.5 w-4 h-4 rounded text-[#E53935] border-slate-300 focus:ring-[#E53935]"
           />
           <span className="text-xs text-slate-600 dark:text-slate-300">
-            I confirm that the information provided is accurate and that I agree to the{' '}
+            I confirm the provided medical details are accurate and grant explicit consent under DPDP guidelines to share my blood group and contact details with verified emergency patients and hospitals. I agree to the{' '}
             <a href="/privacy" target="_blank" className="text-[#E53935] underline font-semibold">Privacy Policy</a>{' '}
-            and terms. My contact information will only be shared with verified hospitals for urgent donation needs.
+            and understand I can toggle my profile to Private at any time.
           </span>
         </label>
         {errors.consent && (

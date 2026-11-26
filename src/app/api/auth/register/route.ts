@@ -301,7 +301,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Create session cookie
-    const sessionId = createSession(result.id);
+    const sessionId = createSession(result.id, result.role);
     const response = NextResponse.json({
       success: true,
       userId: result.id,

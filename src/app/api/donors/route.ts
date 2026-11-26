@@ -15,6 +15,30 @@ export async function GET(request: NextRequest) {
     const verifiedOnly = searchParams.get('verifiedOnly') === 'true';
     const searchQuery = searchParams.get('q') || undefined;
 
+    const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value;
+    const session = sessionCookie ? getSession(sessionCookie) : null;
+    const isAuthenticated = Boolean(session && session.userId);
+
+    const sanitizeDonor = (d: any) => {
+      if (isAuthenticated) return { ...d, isContactMasked: false };
+      const rawPhone = d.phone || '';
+      const cleanPhone = String(rawPhone).trim();
+      const maskedPhone = cleanPhone.length > 4 ? `+91 ••••• ••${cleanPhone.slice(-4)}` : '+91 ••••• •••••';
+      let maskedEmail = '';
+      if (d.email && String(d.email).includes('@')) {
+        const [u, dom] = String(d.email).split('@');
+        maskedEmail = `${u.slice(0, 2)}•••@${dom}`;
+      }
+      return {
+        ...d,
+        phone: maskedPhone,
+        email: maskedEmail,
+        isContactMasked: true,
+        latitude: d.latitude ? Math.round(Number(d.latitude) * 100) / 100 : null,
+        longitude: d.longitude ? Math.round(Number(d.longitude) * 100) / 100 : null,
+      };
+    };
+
     // Try fetching from Prisma DB
     try {
       const where: any = {
@@ -42,7 +66,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           success: true,
           count: dbDonors.length,
-          data: dbDonors,
+          data: dbDonors.map(sanitizeDonor),
           source: 'prisma_database',
         });
       }
@@ -63,7 +87,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: donors.length,
-      data: donors,
+      data: donors.map(sanitizeDonor),
       source: 'memory_store',
     });
   } catch (error: any) {

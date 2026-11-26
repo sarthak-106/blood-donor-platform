@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'No account found with these credentials.' }, { status: 401 });
       }
 
-      const sessionId = createSession(user.id);
+      const sessionId = createSession(user.id, user.role);
       const response = NextResponse.json({ success: true, user: sanitizeUser(user) });
       response.cookies.set(SESSION_COOKIE, sessionId, {
         httpOnly: true,

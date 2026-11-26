@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     else if (user.role === 'hospital') targetDashboard = '/admin/blood-banks';
 
     // Create session cookie
-    const sessionId = createSession(user.id);
+    const sessionId = createSession(user.id, user.role);
     const response = NextResponse.json({
       success: true,
       role: user.role,

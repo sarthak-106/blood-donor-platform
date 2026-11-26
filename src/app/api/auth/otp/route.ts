@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prismaClient';
-import { randomInt } from 'crypto';
+import { randomInt, timingSafeEqual } from 'crypto';
 
 // In-memory OTP store (in production use Redis or a DB table)
 const otpStore = new Map<string, { otp: string; expiresAt: number; attempts: number }>();
@@ -111,8 +111,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rate limiting
+    // Rate limiting: check both phone and client IP
     const now = Date.now();
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown-ip';
+    const ipRateKey = `rl_ip_${clientIp}`;
+    const ipEntry = rateLimitStore.get(ipRateKey);
+
+    if (ipEntry && clientIp !== 'unknown-ip') {
+      if (now - ipEntry.windowStart < RATE_WINDOW_MS) {
+        if (ipEntry.count >= 10) { // Max 10 OTP requests per IP per 10 mins
+          return NextResponse.json(
+            { success: false, error: 'Too many OTP requests from your network. Please wait a few minutes before trying again.' },
+            { status: 429 }
+          );
+        }
+        ipEntry.count++;
+      } else {
+        rateLimitStore.set(ipRateKey, { count: 1, windowStart: now });
+      }
+    } else if (clientIp !== 'unknown-ip') {
+      rateLimitStore.set(ipRateKey, { count: 1, windowStart: now });
+    }
+
     const rateKey = `rl_${normalizedPhone}`;
     const rateEntry = rateLimitStore.get(rateKey);
 
@@ -201,7 +221,12 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    if (stored.otp !== inputOtp) {
+    // Timing-safe comparison to prevent timing attacks
+    const storedBuf = Buffer.from(stored.otp, 'utf-8');
+    const inputBuf = Buffer.from(inputOtp, 'utf-8');
+    const isMatch = storedBuf.length === inputBuf.length && timingSafeEqual(storedBuf, inputBuf);
+
+    if (!isMatch) {
       stored.attempts++;
       const remaining = MAX_ATTEMPTS - stored.attempts;
       return NextResponse.json(
