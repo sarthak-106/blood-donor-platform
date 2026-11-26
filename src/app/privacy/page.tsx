@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { Shield, Lock, Eye, FileText } from 'lucide-react';
+import { Shield, Lock, Eye, FileText, Navigation } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy & Donor Data Protection',
@@ -52,6 +52,27 @@ export default function PrivacyPolicyPage() {
           <p>
             We never monetize, sell, license, or exchange user or patient health data with third-party advertisers or commercial entities.
           </p>
+        </section>
+
+        <section id="donor-tracking" className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <Navigation className="w-4 h-4 text-medical-red" />
+            <span>4. Real-Time Donor Transit & Location Tracking (Emergency En-Route Protocol)</span>
+          </h2>
+          <p>
+            When a voluntary donor accepts an active emergency blood request, our platform initiates <strong>real-time en-route transit tracking</strong> powered by Google Maps Platform.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-slate-600 dark:text-slate-300">
+            <li>
+              <strong>Purpose:</strong> Live location sharing enables hospital triage staff and waiting emergency recipients to monitor the donor’s transit progress, calculate accurate Estimated Times of Arrival (ETA), and prepare transfusion equipment without critical delays.
+            </li>
+            <li>
+              <strong>Duration & Scope:</strong> Location tracking begins strictly when the donor confirms acceptance and is traveling toward the designated medical facility. The live GPS broadcast automatically terminates immediately upon hospital arrival and check-in at the blood bank.
+            </li>
+            <li>
+              <strong>Privacy & Security Guarantee:</strong> Historical GPS route logs are never sold, monetized, or shared with commercial tracking brokers. Only authenticated participants directly tied to that specific emergency request can view the active transit route.
+            </li>
+          </ul>
         </section>
       </div>
     </div>

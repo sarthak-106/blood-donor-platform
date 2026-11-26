@@ -228,6 +228,16 @@ export default function DonorIncomingRequestsPage() {
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-medical-red focus:outline-none"
                     />
                   </div>
+
+                  <div className="p-3 bg-red-50/80 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl space-y-1 text-xs">
+                    <span className="font-bold text-red-700 dark:text-red-300 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-red-600" />
+                      Live Transit GPS Tracking Notice
+                    </span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      By confirming acceptance, you agree to share your real-time en-route transit location with the recipient and hospital team to coordinate emergency readiness. Location sharing terminates upon arrival at the blood bank (Privacy Policy Section 4).
+                    </p>
+                  </div>
                 </>
               ) : (
                 <div>

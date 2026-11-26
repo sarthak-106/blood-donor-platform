@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { BloodRequest, Donor, DonorRequest, RequestStatus } from '@/lib/types';
 import { BloodGroupBadge } from '@/components/blood/BloodGroupBadge';
 import { AnonymousChatBox } from '@/components/chat/AnonymousChatBox';
+import { DonorLiveTrackingMap } from '@/components/tracking/DonorLiveTrackingMap';
 import { db } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -101,6 +102,14 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
   };
 
   const currentStageIndex = getStageIndex(request.status);
+
+  const acceptedDonorResponse = donorResponses.find((dr) => dr.status === 'Accepted');
+  const activeDonor = acceptedDonorResponse ? db.getDonorById(acceptedDonorResponse.donor_id) : null;
+  const isDonorAcceptedOrInProgress =
+    request.status === 'Donor Accepted' ||
+    request.status === 'In Progress' ||
+    Boolean(request.accepted_donors_count && request.accepted_donors_count > 0) ||
+    Boolean(acceptedDonorResponse);
 
   const handleUpdateStatus = (newStatus: RequestStatus) => {
     db.updateBloodRequestStatus(request.id, newStatus);
@@ -324,6 +333,19 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
           </a>
         </div>
       </div>
+
+      {/* Live Donor Transit Tracking Map (Powered by Google Maps Platform) */}
+      {isDonorAcceptedOrInProgress && (
+        <DonorLiveTrackingMap
+          requestId={request.id}
+          donorName={activeDonor?.name || acceptedDonorResponse?.donor_name || 'Amina Al-Mansoor'}
+          donorBloodGroup={activeDonor?.blood_group || request.blood_group}
+          donorPhone={activeDonor?.phone || '+91 98765 43210'}
+          hospitalName={request.hospital}
+          hospitalCity={request.city}
+          initialEta={acceptedDonorResponse?.eta || '20-30 mins'}
+        />
+      )}
 
       {/* Anonymous Coordination Chat Box */}
       <AnonymousChatBox
